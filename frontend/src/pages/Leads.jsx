@@ -280,9 +280,13 @@ export default function Leads() {
       {/* Header */}
       <div className="page-header">
         <div>
-          <p className="text-sm mt-0.5" style={{ color: 'var(--text-secondary)' }}>
-            {leads.length} total leads across {new Set(leads.map((l) => l.campaignId).filter(Boolean)).size} campaigns
-          </p>
+          {loading ? (
+            <div className="skeleton h-4 w-44 rounded mt-1" />
+          ) : (
+            <p className="text-sm mt-0.5" style={{ color: 'var(--text-secondary)' }}>
+              {leads.length} total leads across {new Set(leads.map((l) => l.campaignId).filter(Boolean)).size} campaigns
+            </p>
+          )}
         </div>
         <Button
           variant="primary"

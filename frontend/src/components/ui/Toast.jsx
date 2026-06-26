@@ -34,11 +34,12 @@ function ToastItem({ toast }) {
       transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
       className="flex items-center gap-2.5 px-4 py-2.5 rounded-full shadow-xl max-w-[380px] pointer-events-auto"
       style={{
-        background: 'rgba(24, 24, 27, 0.85)', // zinc-900 glass
-        backdropFilter: 'blur(12px)',
-        WebkitBackdropFilter: 'blur(12px)',
-        border: '1px solid rgba(255, 255, 255, 0.1)',
-        color: '#F9FAFB'
+        background: 'var(--bg-glass-strong)',
+        backdropFilter: 'var(--blur-md)',
+        WebkitBackdropFilter: 'var(--blur-md)',
+        border: '1px solid var(--border-glass)',
+        color: 'var(--text-primary)',
+        boxShadow: 'var(--shadow-float)',
       }}
       role="alert"
       aria-live="polite"
@@ -50,7 +51,7 @@ function ToastItem({ toast }) {
 
       {/* Message */}
       <div className="flex-1 min-w-0 pr-2">
-        <p className="text-[13px] font-medium leading-tight text-white">
+        <p className="text-[13px] font-medium leading-tight text-primary">
           {toast.title ? `${toast.title} - ${toast.message}` : toast.message}
         </p>
       </div>

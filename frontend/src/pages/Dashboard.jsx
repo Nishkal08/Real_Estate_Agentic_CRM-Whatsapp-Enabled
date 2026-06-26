@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   Users, Megaphone, MessageSquare, Star,
   Flame, CheckCircle2, Zap, Bell, Activity,
-  ArrowRight, PlayCircle
+  ArrowRight
 } from 'lucide-react';
 import { PageWrapper } from '@/components/layout/PageWrapper';
 import { StatCard } from '@/components/analytics/StatCard';
@@ -79,9 +79,7 @@ export default function Dashboard() {
     fetchData();
   }, []);
 
-  const handleLoadDemo = () => {
-    toast.success('Demo data loaded! SolarBright — Ahmedabad is active.', { title: 'Demo Mode' });
-  };
+
 
   return (
     <PageWrapper>
@@ -89,19 +87,15 @@ export default function Dashboard() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h2 className="text-2xl font-display" style={{ color: 'var(--text-primary)' }}>Good afternoon, {user?.name || 'User'}</h2>
-          <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
-            Your agents handled <strong style={{ color: 'var(--text-primary)' }}>312</strong> conversations today.
-          </p>
+          {loading ? (
+            <div className="skeleton h-4 w-64 rounded mt-2" />
+          ) : (
+            <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
+              Your agents handled <strong style={{ color: 'var(--text-primary)' }}>{stats?.todayMessages ?? 0}</strong> conversations today.
+            </p>
+          )}
         </div>
         <div className="flex items-center gap-2">
-          <Button
-            variant="secondary"
-            size="sm"
-            icon={<PlayCircle size={14} />}
-            onClick={handleLoadDemo}
-          >
-            Load Demo
-          </Button>
           <Button
             variant="primary"
             size="sm"
@@ -179,43 +173,68 @@ export default function Dashboard() {
             </div>
 
             <div className="space-y-3">
-              {activities.slice(0, 6).map((act) => {
-                const actColor = ACTIVITY_COLORS[act.type] || ACTIVITY_COLORS.message_sent;
-                return (
-                  <div
-                    key={act.id}
-                    className="flex items-start gap-3 py-2 px-3 rounded-xl transition-all cursor-pointer"
-                    style={{
-                      background: act.read ? 'transparent' : 'var(--accent-light)',
-                      borderLeft: act.read ? 'none' : `2px solid var(--accent)`,
-                    }}
-                    onClick={() => handleActivityClick(act)}
-                  >
-                    <div
-                      className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5"
-                      style={{ background: actColor.bg, color: actColor.color }}
-                    >
-                      {ACTIVITY_ICONS[act.type] || <Activity size={13} />}
+              {loading ? (
+                Array.from({ length: 4 }).map((_, idx) => (
+                  <div key={idx} className="flex items-start gap-3 py-2 px-3">
+                    <div className="skeleton w-7 h-7 rounded-lg flex-shrink-0" />
+                    <div className="flex-1 min-w-0 space-y-1.5">
+                      <div className="skeleton h-3 w-40 rounded" />
+                      <div className="skeleton h-2.5 w-72 rounded" />
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-                        {act.title}
-                      </p>
-                      <p className="text-xs mt-0.5 truncate" style={{ color: 'var(--text-secondary)' }}>
-                        {act.description}
-                      </p>
-                    </div>
-                    <span className="text-xs flex-shrink-0 mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                      {formatRelativeTime(act.timestamp)}
-                    </span>
+                    <div className="skeleton h-2 w-12 rounded mt-1" />
                   </div>
-                );
-              })}
+                ))
+              ) : activities.length === 0 ? (
+                <p className="text-xs text-center py-4" style={{ color: 'var(--text-muted)' }}>
+                  No recent activities
+                </p>
+              ) : (
+                activities.slice(0, 6).map((act) => {
+                  const actColor = ACTIVITY_COLORS[act.type] || ACTIVITY_COLORS.message_sent;
+                  return (
+                    <div
+                      key={act.id}
+                      className="flex items-start gap-3 py-2 px-3 rounded-xl transition-all cursor-pointer"
+                      style={{
+                        background: act.read ? 'transparent' : 'var(--accent-light)',
+                        borderLeft: act.read ? 'none' : `2px solid var(--accent)`,
+                      }}
+                      onClick={() => handleActivityClick(act)}
+                    >
+                      <div
+                        className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5"
+                        style={{ background: actColor.bg, color: actColor.color }}
+                      >
+                        {ACTIVITY_ICONS[act.type] || <Activity size={13} />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                          {act.title}
+                        </p>
+                        <p className="text-xs mt-0.5 truncate" style={{ color: 'var(--text-secondary)' }}>
+                          {act.description}
+                        </p>
+                      </div>
+                      <span className="text-xs flex-shrink-0 mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                        {formatRelativeTime(act.timestamp)}
+                      </span>
+                    </div>
+                  );
+                })
+              )}
             </div>
           </div>
 
           {/* Active Campaign mini view */}
-          {activeCampaign && (
+          {loading ? (
+            <div className="card-no-hover space-y-3">
+              <div className="flex justify-between items-center mb-2">
+                <div className="skeleton h-4 w-32 rounded" />
+                <div className="skeleton h-4 w-16 rounded" />
+              </div>
+              <div className="skeleton h-20 w-full rounded-xl" />
+            </div>
+          ) : activeCampaign ? (
             <div className="card-no-hover">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-md" style={{ color: 'var(--text-primary)' }}>Active Campaign</h2>
@@ -253,13 +272,27 @@ export default function Dashboard() {
                 </div>
               </div>
             </div>
-          )}
+          ) : null}
         </div>
 
         {/* Right panel */}
         <div className="space-y-4">
           {/* Hot leads alert */}
-          {hotLeads.length > 0 && (
+          {loading ? (
+            <div className="card-no-hover space-y-3">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="skeleton w-6 h-6 rounded-lg" />
+                <div className="skeleton h-4 w-24 rounded" />
+              </div>
+              <div className="flex items-center gap-3 py-1">
+                <div className="skeleton w-8 h-8 rounded-full flex-shrink-0" />
+                <div className="flex-1 space-y-1.5">
+                  <div className="skeleton h-3 w-28 rounded" />
+                  <div className="skeleton h-2.5 w-44 rounded" />
+                </div>
+              </div>
+            </div>
+          ) : hotLeads.length > 0 ? (
             <div
               className="card-no-hover"
               style={{ borderLeft: '3px solid var(--danger)' }}
@@ -305,44 +338,63 @@ export default function Dashboard() {
                 Take Over
               </Button>
             </div>
-          )}
+          ) : null}
 
           {/* Quick stats panel */}
           <div className="card-no-hover space-y-4">
             <h2 className="text-md" style={{ color: 'var(--text-primary)' }}>Quick Stats</h2>
-            {[
-              { label: 'Reply Rate', value: `${stats?.avgReplyRate || 0}%`, color: 'var(--accent)' },
-              { label: 'Qual. Rate', value: `${stats?.avgQualRate || 0}%`, color: 'var(--success)' },
-              { label: 'Today Messages', value: stats?.todayMessages || 0, color: 'var(--text-primary)' },
-              { label: 'Converted', value: stats?.convertedLeads || 0, color: 'var(--success)' },
-            ].map((item) => (
-              <div key={item.label} className="flex items-center justify-between">
-                <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>{item.label}</span>
-                <span className="text-sm font-semibold stat-value" style={{ color: item.color }}>
-                  {item.value}
-                </span>
-              </div>
-            ))}
+            {loading ? (
+              Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="flex items-center justify-between py-0.5">
+                  <div className="skeleton h-3.5 w-24 rounded" />
+                  <div className="skeleton h-3.5 w-10 rounded" />
+                </div>
+              ))
+            ) : (
+              [
+                { label: 'Reply Rate', value: `${stats?.avgReplyRate || 0}%`, color: 'var(--accent)' },
+                { label: 'Qual. Rate', value: `${stats?.avgQualRate || 0}%`, color: 'var(--success)' },
+                { label: 'Today Messages', value: stats?.todayMessages || 0, color: 'var(--text-primary)' },
+                { label: 'Converted', value: stats?.convertedLeads || 0, color: 'var(--success)' },
+              ].map((item) => (
+                <div key={item.label} className="flex items-center justify-between">
+                  <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>{item.label}</span>
+                  <span className="text-sm font-semibold stat-value" style={{ color: item.color }}>
+                    {item.value}
+                  </span>
+                </div>
+              ))
+            )}
           </div>
 
           {/* AI Status */}
-          <div
-            className="card-no-hover flex items-center gap-3"
-            style={{ background: 'var(--accent-light)', border: '1px solid rgba(94,106,210,0.2)' }}
-          >
+          {loading ? (
+            <div className="card-no-hover flex items-center gap-3">
+              <div className="skeleton w-9 h-9 rounded-xl flex-shrink-0" />
+              <div className="space-y-1.5 flex-1">
+                <div className="skeleton h-3.5 w-28 rounded" />
+                <div className="skeleton h-2.5 w-36 rounded" />
+              </div>
+            </div>
+          ) : (
             <div
-              className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-              style={{ background: 'var(--accent)' }}
+              className="card-no-hover flex items-center gap-3"
+              style={{ background: 'var(--accent-light)', border: '1px solid rgba(196, 101, 74, 0.2)' }}
             >
-              <Zap size={16} color="#fff" />
+              <div
+                className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+                style={{ background: 'var(--accent)' }}
+              >
+                <Zap size={16} color="#fff" />
+              </div>
+              <div>
+                <p className="text-sm font-medium" style={{ color: 'var(--accent-text)' }}>AI Agent Active</p>
+                <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                  Monitoring {stats?.activeLeads || 0} conversations
+                </p>
+              </div>
             </div>
-            <div>
-              <p className="text-sm font-medium" style={{ color: 'var(--accent-text)' }}>AI Agent Active</p>
-              <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                Monitoring {stats?.activeLeads || 0} conversations
-              </p>
-            </div>
-          </div>
+          )}
         </div>
       </div>
     </PageWrapper>

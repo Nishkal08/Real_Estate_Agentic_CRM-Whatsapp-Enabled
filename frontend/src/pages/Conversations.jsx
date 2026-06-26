@@ -17,6 +17,7 @@ export default function Conversations() {
   const [isHumanMode, setIsHumanMode] = useState(false);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
+  const [loadingMessages, setLoadingMessages] = useState(false);
 
   const latestActivity = useActivityStore(state => state.activities[0]);
 
@@ -148,6 +149,7 @@ export default function Conversations() {
     setSelected(lead);
     setConversation([]);
     setIsHumanMode(lead.isHuman || false);
+    setLoadingMessages(true);
     
     try {
       if (lead.conversationId) {
@@ -178,6 +180,8 @@ export default function Conversations() {
       }
     } catch (err) {
       console.error("Failed to load messages", err);
+    } finally {
+      setLoadingMessages(false);
     }
   };
 
@@ -227,26 +231,28 @@ export default function Conversations() {
     <PageWrapper>
       <div className="page-header">
         <div>
-          <p className="text-sm mt-0.5" style={{ color: 'var(--text-secondary)' }}>
-            {leads.length} active threads · {leads.filter(l => l.status === 'hot').length} hot
-          </p>
+          {loading ? (
+            <div className="skeleton h-4 w-44 rounded mt-1" />
+          ) : (
+            <p className="text-sm mt-0.5" style={{ color: 'var(--text-secondary)' }}>
+              {leads.length} active threads · {leads.filter(l => l.status === 'hot').length} hot
+            </p>
+          )}
         </div>
       </div>
 
       <div
-        className="rounded-[18px] overflow-hidden"
+        className="overflow-hidden"
         style={{
-          border: '1px solid var(--border-glass)',
-          background: 'var(--bg-glass)',
-          backdropFilter: 'blur(8px)',
           height: 'calc(100vh - 200px)',
           display: 'flex',
+          gap: '24px',
         }}
       >
         {/* Left panel — conversation list */}
         <div
-          className="flex flex-col w-72 flex-shrink-0"
-          style={{ borderRight: '1px solid var(--border-subtle)' }}
+          className="flex flex-col w-80 flex-shrink-0 card-no-hover"
+          style={{ padding: 0, overflow: 'hidden' }}
         >
           {/* Search */}
           <div className="p-3" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
@@ -258,7 +264,30 @@ export default function Conversations() {
 
           {/* List */}
           <div className="flex-1 overflow-y-auto">
-            {filtered.map(lead => (
+            {loading ? (
+              Array.from({ length: 6 }).map((_, idx) => (
+                <div key={idx} className="flex items-start gap-3 p-3 border-b border-transparent">
+                  <div className="skeleton w-8 h-8 rounded-full flex-shrink-0" />
+                  <div className="flex-1 min-w-0 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="skeleton h-3 w-28 rounded" />
+                      <div className="skeleton h-2 w-10 rounded" />
+                    </div>
+                    <div className="skeleton h-3.5 w-40 rounded" />
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <div className="skeleton h-4 w-12 rounded" />
+                      <div className="skeleton h-4 w-16 rounded" />
+                      <div className="skeleton h-4 w-14 rounded" />
+                    </div>
+                  </div>
+                </div>
+              ))
+            ) : filtered.length === 0 ? (
+              <div className="p-4 text-center text-xs" style={{ color: 'var(--text-muted)' }}>
+                No conversations found
+              </div>
+            ) : (
+              filtered.map(lead => (
               <div
                 key={lead.id}
                 className={cn(
@@ -335,12 +364,12 @@ export default function Conversations() {
                   </div>
                 </div>
               </div>
-            ))}
+            )))}
           </div>
         </div>
 
         {/* Right panel — chat */}
-        <div className="flex-1 overflow-hidden">
+        <div className="flex-1 overflow-hidden card-no-hover flex flex-col" style={{ padding: 0 }}>
           {selected ? (
             <div className="flex flex-col h-full">
               {/* Conversation header */}
@@ -458,6 +487,7 @@ export default function Conversations() {
 
               <ChatWindow
                 messages={conversation}
+                loadingMessages={loadingMessages}
                 isHumanMode={isHumanMode}
                 onSend={handleSend}
                 onTakeOver={handleTakeOver}

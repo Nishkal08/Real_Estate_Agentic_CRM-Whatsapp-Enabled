@@ -647,9 +647,13 @@ export default function Campaigns() {
     <PageWrapper>
       <div className="page-header">
         <div>
-          <p className="text-sm mt-0.5" style={{ color: 'var(--text-secondary)' }}>
-            {campaigns.filter(c => c.status === 'active').length} active · {campaigns.length} total
-          </p>
+          {loading ? (
+            <div className="skeleton h-4 w-32 rounded mt-1" />
+          ) : (
+            <p className="text-sm mt-0.5" style={{ color: 'var(--text-secondary)' }}>
+              {campaigns.filter(c => c.status === 'active').length} active · {campaigns.length} total
+            </p>
+          )}
         </div>
         <Button variant="primary" size="sm" icon={<Plus size={14} />} onClick={() => setBuilderOpen(true)} id="btn-new-campaign">
           New Campaign
