@@ -2,7 +2,10 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import axios from 'axios'; // use regular axios for auth calls to avoid circular dependency with api.js
 
-const apiBaseUrl = import.meta.env.VITE_API_URL || '/api';
+let apiBaseUrl = import.meta.env.VITE_API_URL || '/api';
+if (apiBaseUrl !== '/api' && !apiBaseUrl.endsWith('/api')) {
+  apiBaseUrl = apiBaseUrl.replace(/\/$/, '') + '/api';
+}
 
 /**
  * Auth Store — user session state

@@ -1,7 +1,10 @@
 import axios from 'axios';
 import useAuthStore from '@/stores/authStore';
 
-const apiBaseUrl = import.meta.env.VITE_API_URL || '/api';
+let apiBaseUrl = import.meta.env.VITE_API_URL || '/api';
+if (apiBaseUrl !== '/api' && !apiBaseUrl.endsWith('/api')) {
+  apiBaseUrl = apiBaseUrl.replace(/\/$/, '') + '/api';
+}
 
 /**
  * Axios instance with JWT auth interceptor and 401 redirect

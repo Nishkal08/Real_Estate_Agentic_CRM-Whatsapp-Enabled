@@ -49,7 +49,10 @@ export function useSSE() {
       return;
     }
 
-    const apiBaseUrl = import.meta.env.VITE_API_URL || '/api';
+    let apiBaseUrl = import.meta.env.VITE_API_URL || '/api';
+    if (apiBaseUrl !== '/api' && !apiBaseUrl.endsWith('/api')) {
+      apiBaseUrl = apiBaseUrl.replace(/\/$/, '') + '/api';
+    }
     const es = new EventSource(`${apiBaseUrl}/events`, { withCredentials: true });
     esRef.current = es;
 
