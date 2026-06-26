@@ -2,10 +2,16 @@ from twilio.rest import Client
 from config.settings import settings
 import time
 
-twilio_client = Client(settings.twilio_ssid, settings.twilio_auth)
+# Initialize Twilio client only if credentials are provided
+twilio_client = None
+if settings.twilio_ssid and settings.twilio_auth:
+    try:
+        twilio_client = Client(settings.twilio_ssid, settings.twilio_auth)
+    except Exception as e:
+        print(f"[Twilio Init Error] {e}")
 
 # Ensure FROM_NUMBER is configured with 'whatsapp:' prefix
-from_number = settings.twilio_number
+from_number = settings.twilio_number or "+14155238886"
 if not from_number.startswith('whatsapp:'):
     from_number = f"whatsapp:{from_number}"
 FROM_NUMBER = from_number
@@ -46,6 +52,10 @@ def send_text_message(to_phone: str, message: str) -> dict:
             print(f"[Twilio Sandbox Block] Dropped outbound text to non-whitelisted number: {clean_to}")
             return {"success": False, "error": "Blocked: non-whitelisted number"}
         
+    if not twilio_client:
+        print(f"[Twilio STUB] Would send text to {final_to}: {final_message}")
+        return {"success": True, "sid": f"stub_{int(time.time())}"}
+
     try:
         msg = twilio_client.messages.create(
             from_=FROM_NUMBER,
@@ -80,6 +90,10 @@ def send_image_message(to_phone: str, image_url: str, caption: str = "") -> dict
             print(f"[Twilio Sandbox Block] Dropped outbound image to non-whitelisted number: {clean_to}")
             return {"success": False, "error": "Blocked: non-whitelisted number"}
         
+    if not twilio_client:
+        print(f"[Twilio STUB] Would send image to {final_to}: {final_caption} (Media: {image_url})")
+        return {"success": True, "sid": f"stub_{int(time.time())}"}
+
     try:
         msg = twilio_client.messages.create(
             from_=FROM_NUMBER,

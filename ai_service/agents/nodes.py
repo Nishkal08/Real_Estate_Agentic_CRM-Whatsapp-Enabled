@@ -1,15 +1,13 @@
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage, ToolMessage
 from langchain_mistralai import ChatMistralAI
-from langchain_groq import ChatGroq
+from pydantic import BaseModel
+from typing import List
 from agents.state import AgentState
 from agents.tools import TOOLS
 from utils.prompts import build_system_prompt
 from utils.memory import prepare_conversation_context
 from config.settings import settings
 import time
-import os
-import re
-from urllib.parse import urlparse
 
 # Initialize LLMs
 llm_primary = ChatMistralAI(
@@ -19,9 +17,9 @@ llm_primary = ChatMistralAI(
     max_tokens=500
 )
 
-llm_fallback = ChatGroq(
-    model="llama-3.1-8b-instant",
-    api_key=settings.groq_api_key,
+llm_fallback = ChatMistralAI(
+    model="mistral-medium-3-5",
+    api_key=settings.mistral_api_key,
     temperature=0.0,
     max_tokens=500
 )
@@ -30,88 +28,21 @@ llm_fallback = ChatGroq(
 llm_primary_with_tools = llm_primary.bind_tools(TOOLS)
 llm_fallback_with_tools = llm_fallback.bind_tools(TOOLS)
 
-_projects_cache = {}
-
-def get_dynamic_projects(kb_id: str = "main-kb") -> list[tuple[str, list[str]]]:
-    """Dynamically extracts project names and aliases from Chroma vector database sources."""
-    now = time.time()
-    # Cache for 60 seconds to avoid vectorstore lookups on every message
-    cache_entry = _projects_cache.get(kb_id)
-    if cache_entry and (now - cache_entry["timestamp"] < 60):
-        return cache_entry["data"]
-
-    from kb.ingestion.pdf_ingestor import get_chroma_db
-    try:
-        vectorstore = get_chroma_db(kb_id)
-        collection = vectorstore._collection
-        data = collection.get(include=["metadatas"])
-        metas = data.get("metadatas", [])
-    except Exception as e:
-        print(f"Error accessing Chroma to get project list: {e}")
-        return []
-
-    sources = set()
-    for meta in metas:
-        src = meta.get("source")
-        if src:
-            sources.add(src)
-
-    projects = []
-    for src in sources:
-        # Extract filename from URL if applicable
-        name = src
-        if name.startswith("http://") or name.startswith("https://"):
-            name = os.path.basename(urlparse(name).path)
-        # Remove file extension
-        if "." in name:
-            name = name.rsplit(".", 1)[0]
-            
-        # Clean name
-        name_clean = name.replace("_", " ").replace("-", " ")
-        for word in ["official", "brochure", "compressed", "pdf", "png", "jpg", "jpeg", "developer", "profile"]:
-            name_clean = re.sub(rf'\b{word}\b', '', name_clean, flags=re.IGNORECASE)
-        name_clean = re.sub(r'\s+', ' ', name_clean).strip()
-        
-        if not name_clean or name_clean.lower() in ["developer", "profile", "main", "kb"]:
-            continue
-            
-        # Build keywords
-        name_lower = name_clean.lower()
-        keywords = [name_lower]
-        if " " in name_lower:
-            keywords.append(name_lower.replace(" ", "_"))
-            keywords.append(name_lower.replace(" ", ""))
-            parts = name_lower.split()
-            for part in parts:
-                if len(part) > 3 and part not in ["codename", "project"]:
-                    keywords.append(part)
-            # Special aliases for known common project names
-            if "dear life" in name_lower:
-                keywords.extend(["dear life", "dear_life"])
-            if "page 22" in name_lower:
-                keywords.extend(["page 22", "page_22", "page22"])
-            if "levvel 7" in name_lower:
-                keywords.extend(["levvel 7", "levvel_7", "levvel7"])
-            if "forever young" in name_lower:
-                keywords.extend(["forever young", "forever_young", "foreveryoung"])
-            if "life in blue" in name_lower:
-                keywords.extend(["life in blue", "life_in_blue"])
-                
-        keywords = list(set([kw for kw in keywords if kw]))
-        projects.append((name_lower, keywords))
-
-    _projects_cache[kb_id] = {
-        "timestamp": now,
-        "data": projects
-    }
-    return projects
-
-def check_relevance(text: str, caption: str, url: str, kb_id: str = "main-kb") -> bool:
+def check_relevance(text: str, caption: str, url: str) -> bool:
     text_lower = text.lower()
     caption_lower = caption.lower() if caption else ""
     url_lower = url.lower() if url else ""
     
-    projects = get_dynamic_projects(kb_id)
+    # Extract project identifiers
+    projects = [
+        ("eden", ["eden"]),
+        ("dear life", ["dear life", "dear_life", "jagatpur"]),
+        ("page 22", ["page 22", "page_22", "page22"]),
+        ("levvel 7", ["levvel 7", "levvel_7", "levvel7"]),
+        ("forever young", ["forever young", "forever_young", "ognaj"]),
+        ("cornerstone", ["cornerstone", "codename cornerstone", "codename_cornerstone"]),
+        ("life in blue", ["life in blue", "life_in_blue"])
+    ]
     
     # Check if the asset itself belongs to a specific project
     asset_project = None
@@ -120,21 +51,13 @@ def check_relevance(text: str, caption: str, url: str, kb_id: str = "main-kb") -
             asset_project = proj_id
             break
             
-    # Check if the conversation text mentions any known project keywords
-    any_project_in_text = any(
-        any(kw in text_lower for kw in proj_kws)
-        for _, proj_kws in projects
-    )
-            
     # If the asset is identified as belonging to a project,
     # it is ONLY relevant if that project is mentioned in the text
     if asset_project:
         proj_kws = next(kws for proj_id, kws in projects if proj_id == asset_project)
         return any(kw in text_lower for kw in proj_kws)
         
-    # If the asset is unidentified (no project keywords in caption/url),
-    # it passes through only if the conversation context is generic (no projects mentioned)
-    return not any_project_in_text
+    return True
 
 def conversation_node(state: AgentState) -> dict:
     # Prepare conversation window (last 8 messages + cached summary)
@@ -168,14 +91,13 @@ def conversation_node(state: AgentState) -> dict:
 
     max_retries = 3
     used_fallback = False
-    images_found = list(state.get("images_to_send", []) or [])
-    brochure_found = state.get("brochure_url")
+    images_found = []
+    brochure_found = None
     final_reply = ""
 
     # ReAct-style internal loop (max 5 cycles)
     current_messages = list(lc_messages)
     for cycle in range(5):
-        used_fallback = False  # Reset fallback flag at the start of each cycle
         response = None
         for attempt in range(max_retries):
             try:
@@ -185,7 +107,7 @@ def conversation_node(state: AgentState) -> dict:
                     response = llm_fallback_with_tools.invoke(current_messages)
                 break
             except Exception as e:
-                print(f"LLM call failed (cycle {cycle+1}, attempt {attempt+1}/3) model: {'llama-3.1-8b-instant' if used_fallback else 'mistral-small-latest'}, error: {e}")
+                print(f"LLM call failed (cycle {cycle+1}, attempt {attempt+1}/3) model: {'llama-3.1-8b' if used_fallback else 'llama-3.3-70b'}, error: {e}")
                 used_fallback = True  # switch to fallback on any exception
                 if attempt < max_retries - 1:
                     time.sleep(1)
@@ -219,59 +141,28 @@ def conversation_node(state: AgentState) -> dict:
 
             # Parse special results
             if tool_name == "search_knowledge_base":
-                import json
-                
-                # Robustly attempt JSON parsing first
-                parsed_json = None
-                try:
-                    stripped = result.strip()
-                    if stripped.startswith(('[', '{')):
-                        parsed_json = json.loads(stripped)
-                except Exception:
-                    pass
-                
-                if parsed_json:
-                    def extract_from_json(data):
-                        nonlocal brochure_found
-                        if isinstance(data, dict):
-                            url = data.get("url") or data.get("image") or data.get("brochure")
-                            if url and isinstance(url, str) and url.startswith("http"):
-                                url_clean = url.strip(".,[]()")
-                                caption = data.get("caption") or data.get("description") or "Project Photo"
-                                is_brochure = "brochure" in data or url_clean.endswith(".pdf") or "brochure" in url_clean.lower()
-                                if is_brochure:
-                                    if not brochure_found:
-                                        brochure_found = url_clean
-                                else:
-                                    exists = any(isinstance(item, dict) and item.get("url") == url_clean for item in images_found)
-                                    if not exists:
-                                        images_found.append({"url": url_clean, "caption": caption})
-                            for v in data.values():
-                                extract_from_json(v)
-                        elif isinstance(data, list):
-                            for item in data:
-                                extract_from_json(item)
-                    extract_from_json(parsed_json)
-                
-                # Fallback to robust line-by-line and regex URL scanning
-                urls = re.findall(r'https?://[^\s|#|\|]+', result)
-                for url in urls:
-                    url_clean = url.strip(".,[]()\"'")
-                    if url_clean.endswith(".pdf") or "brochure" in url_clean.lower():
-                        if not brochure_found:
-                            brochure_found = url_clean
-                    elif any(url_clean.endswith(ext) for ext in [".png", ".jpg", ".jpeg", ".webp", ".gif"]) or any(kw in url_clean.lower() for kw in ["image", "photo"]):
-                        caption = "Project Photo"
-                        # Search for description on the matching line in raw result
-                        for line in result.split("\n"):
-                            if url_clean in line:
-                                match_desc = re.search(r'(?:Description|Caption):\s*(.+)$', line, re.IGNORECASE)
-                                if match_desc:
-                                    caption = match_desc.group(1).strip(".,[]()\"'")
-                                    break
-                        exists = any(isinstance(item, dict) and item.get("url") == url_clean for item in images_found)
-                        if not exists:
-                            images_found.append({"url": url_clean, "caption": caption})
+                import re
+                # Find all lines in result containing Image or Brochure
+                for line in result.split("\n"):
+                    if "Image:" in line:
+                        match_url = re.search(r'Image:\s*(https?://[^\s|#|\|]+)', line)
+                        if match_url:
+                            img_url = match_url.group(1).strip(".,[]()")
+                            # Extract description/caption
+                            caption = "Project Photo"
+                            match_desc = re.search(r'Description:\s*(.+)$', line)
+                            if match_desc:
+                                caption = match_desc.group(1).strip()
+                            
+                            # Check if already added
+                            exists = any(isinstance(item, dict) and item.get("url") == img_url for item in images_found) or (img_url in images_found)
+                            if not exists:
+                                images_found.append({"url": img_url, "caption": caption})
+                                
+                    if "Brochure:" in line:
+                        match_url = re.search(r'Brochure:\s*(https?://[^\s|#|\|]+)', line)
+                        if match_url and not brochure_found:
+                            brochure_found = match_url.group(1).strip(".,[]()")
             elif tool_name == "flag_human_handoff":
                 has_handoff = True
                 handoff_reason = tool_args.get("reason", "Lead requested human")
@@ -292,7 +183,6 @@ def conversation_node(state: AgentState) -> dict:
         final_reply = response.content
 
     if not final_reply:
-        print(f"[Warning] ReAct loop exhausted all 5 cycles without producing a text reply for lead {state.get('lead_id')}.")
         final_reply = "I'm looking into that for you. Could you give me just a moment? 🙏"
 
     # Qualification scoring
@@ -326,18 +216,17 @@ def conversation_node(state: AgentState) -> dict:
     # Filter images and brochures based on conversation context (latest user message + agent response)
     user_msg = state["messages"][-1]["content"] if state["messages"] else ""
     context_text = f"{user_msg} {final_reply}"
-    kb_id = state.get("kb_id") or "main-kb"
     
     filtered_images = []
     for img in images_found:
         url = img.get("url") if isinstance(img, dict) else img
         caption = img.get("caption") if isinstance(img, dict) else ""
-        if check_relevance(context_text, caption, url, kb_id):
+        if check_relevance(context_text, caption, url):
             filtered_images.append(img)
             
     filtered_brochure = brochure_found
     if brochure_found:
-        if not check_relevance(context_text, "brochure", brochure_found, kb_id):
+        if not check_relevance(context_text, "brochure", brochure_found):
             filtered_brochure = None
             
     formatted_reply = format_for_whatsapp(
@@ -403,11 +292,7 @@ def determine_stage(score: int, current_stage: str) -> str:
     return current_stage
 
 def escalation_node(state: AgentState) -> dict:
-    """
-    Fires when lead qualifies or requests human.
-    Note: The actual downstream handoff notifications, DB status updates,
-    and CRM writes are managed in the webhook handler (e.g. whatsapp.js).
-    """
+    """Fires when lead qualifies or requests human."""
     farewell = (
         f"Thank you {state.get('lead_name', 'for your interest')}! 🙏\n"
         f"Our senior consultant will reach out to you shortly "
