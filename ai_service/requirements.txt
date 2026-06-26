@@ -1,0 +1,31 @@
+# Web server
+fastapi
+uvicorn[standard]
+python-dotenv
+pydantic-settings
+pydantic
+
+# LangChain — DIRECT IMPORTS ONLY, NO langchain_community
+langchain-core
+langchain-groq
+langchain-mistralai
+langchain-openai
+langgraph
+langgraph-checkpoint-postgres
+
+# Vector DB & PDF
+chromadb
+langchain-chroma
+pypdf
+
+
+# WhatsApp
+twilio
+
+# Utilities
+psycopg2-binary
+psycopg[binary]
+psycopg-pool
+python-multipart
+httpx
+requests

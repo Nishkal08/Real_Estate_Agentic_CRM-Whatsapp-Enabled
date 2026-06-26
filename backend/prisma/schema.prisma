@@ -1,0 +1,176 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Business (tenant) ───────────────────────────────────
+model Business {
+  id           String   @id @default(uuid())
+  name         String
+  ownerEmail   String   @unique
+  passwordHash String
+  waNumber     String?
+  waBspKey     String?
+  plan         String   @default("starter")
+  availability String?
+  createdAt    DateTime @default(now())
+
+  campaigns      Campaign[]
+  leads          Lead[]
+  knowledgeBases KnowledgeBase[]
+  teamMembers    TeamMember[]
+  conversations  Conversation[]
+  appointments   Appointment[]
+}
+
+model TeamMember {
+  id         String   @id @default(uuid())
+  businessId String
+  name       String
+  email      String
+  role       String   @default("sales_rep")
+  notifyWa   String?
+  business   Business @relation(fields: [businessId], references: [id])
+}
+
+// ─── Knowledge Base ──────────────────────────────────────
+model KnowledgeBase {
+  id          String       @id @default(uuid())
+  businessId  String
+  name        String
+  chromaColId String?
+  createdAt   DateTime     @default(now())
+  business    Business     @relation(fields: [businessId], references: [id])
+  documents   KbDocument[]
+  campaigns   Campaign[]
+}
+
+model KbDocument {
+  id         String        @id @default(uuid())
+  kbId       String
+  fileName   String
+  sourceType String        // pdf | url | typed
+  fileUrl    String?
+  chunkCount Int           @default(0)
+  embeddedAt DateTime?
+  kb         KnowledgeBase @relation(fields: [kbId], references: [id])
+}
+
+// ─── Campaign ────────────────────────────────────────────
+model Campaign {
+  id               String   @id @default(uuid())
+  businessId       String
+  kbId             String?
+  name             String
+  status           String   @default("draft")
+  agentTone        String   @default("friendly")
+  openingTemplate  String?
+  followupSchedule String   @default("{\"day1\":true,\"day3\":true,\"day7\":false}")
+  sendWindowStart  String   @default("10:00")
+  sendWindowEnd    String   @default("19:00")
+  language         String   @default("en")
+  createdAt        DateTime @default(now())
+
+  business  Business       @relation(fields: [businessId], references: [id])
+  kb        KnowledgeBase? @relation(fields: [kbId], references: [id])
+  leads     Lead[]
+  analytics CampaignAnalytics[]
+}
+
+// ─── Lead ────────────────────────────────────────────────
+model Lead {
+  id                 String   @id @default(uuid())
+  campaignId         String
+  businessId         String
+  name               String
+  phone              String
+  email              String?
+  customFields       String   @default("{}")
+  waActive           Boolean  @default(true)
+  status             String   @default("pending")
+  qualificationScore Int      @default(0)
+  intentSignals      String   @default("[]")
+  assignedTo         String?
+  createdAt          DateTime @default(now())
+
+  campaign     Campaign      @relation(fields: [campaignId], references: [id])
+  business     Business      @relation(fields: [businessId], references: [id])
+  conversation Conversation?
+  followUps    FollowUp[]
+}
+
+// ─── Conversation ────────────────────────────────────────
+model Conversation {
+  id               String    @id @default(uuid())
+  leadId           String    @unique
+  businessId       String
+  langraphThreadId String    @unique
+  stage            String    @default("opener")
+  isHumanActive    Boolean   @default(false)
+  humanTookOverAt  DateTime?
+  lastMessageAt    DateTime  @default(now())
+
+  lead     Lead      @relation(fields: [leadId], references: [id])
+  business Business  @relation(fields: [businessId], references: [id])
+  messages Message[]
+}
+
+model Message {
+  id             String       @id @default(uuid())
+  conversationId String
+  role           String       // lead | agent | human
+  content        String
+  waMessageId    String?
+  waStatus       String?      // sent | delivered | read
+  timestamp      DateTime     @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id])
+}
+
+// ─── Follow-up ───────────────────────────────────────────
+model FollowUp {
+  id          String   @id @default(uuid())
+  leadId      String
+  scheduledAt DateTime
+  templateId  String?
+  status      String   @default("pending") // pending | sent | cancelled
+
+  lead Lead @relation(fields: [leadId], references: [id])
+}
+
+// ─── Analytics ───────────────────────────────────────────
+model CampaignAnalytics {
+  id                String   @id @default(uuid())
+  campaignId        String
+  date              DateTime @default(now())
+  messagesSent      Int      @default(0)
+  messagesDelivered Int      @default(0)
+  messagesRead      Int      @default(0)
+  repliesReceived   Int      @default(0)
+  leadsQualified    Int      @default(0)
+  leadsConverted    Int      @default(0)
+  handoffsTriggered Int      @default(0)
+
+  campaign Campaign @relation(fields: [campaignId], references: [id])
+}
+
+// ─── Appointment ─────────────────────────────────────────
+model Appointment {
+  id          String   @id @default(uuid())
+  businessId  String
+  leadName    String
+  phone       String
+  date        String   // YYYY-MM-DD
+  time        String   // HH:MM
+  duration    Int      @default(30)
+  notes       String?
+  status      String   @default("confirmed") // confirmed | pending | completed | cancelled | no_show
+  isAIBooked  Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  business    Business @relation(fields: [businessId], references: [id])
+}
