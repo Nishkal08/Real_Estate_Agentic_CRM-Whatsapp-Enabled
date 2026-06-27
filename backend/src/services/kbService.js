@@ -1,7 +1,7 @@
 const prisma = require('../config/db');
 const ApiError = require('../utils/apiError');
 
-const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8000';
+const AI_SERVICE_URL = (process.env.AI_SERVICE_URL || 'http://localhost:8000').replace(/\/$/, '');
 
 /**
  * Create a new knowledge base
@@ -43,12 +43,14 @@ async function uploadDocument(kbId, businessId, file, description = '') {
     },
   });
 
-  // Call AI service to embed (async, don't block)
-  embedDocument(kbId, doc.id, file.buffer, file.originalname, description).catch(err => {
+  // Call AI service to embed (await to ensure completion before returning)
+  try {
+    await embedDocument(kbId, doc.id, file.buffer, file.originalname, description);
+  } catch (err) {
     console.error(`[KB] Failed to embed ${doc.id}:`, err.message);
-  });
+  }
 
-  return doc;
+  return prisma.kbDocument.findUnique({ where: { id: doc.id } });
 }
 
 /**
@@ -82,12 +84,15 @@ async function ingestURL(kbId, businessId, url) {
         where: { id: doc.id },
         data: { chunkCount: result.chunk_count || 0, embeddedAt: new Date() },
       });
+    } else {
+      const errText = await res.text();
+      console.warn(`[KB] URL embedding failed with status ${res.status}:`, errText);
     }
   } catch (err) {
     console.warn('[KB] URL embedding failed:', err.message);
   }
 
-  return doc;
+  return prisma.kbDocument.findUnique({ where: { id: doc.id } });
 }
 
 /**
@@ -132,29 +137,35 @@ async function deleteDocument(kbId, docId, businessId) {
 
 async function embedDocument(kbId, docId, buffer, fileName, description = '') {
   try {
+    const axios = require('axios');
+    const FormData = require('form-data');
     const formData = new FormData();
-    formData.append('file', new Blob([buffer]), fileName);
+    formData.append('file', buffer, { filename: fileName });
     formData.append('kb_id', kbId);
     formData.append('source_label', fileName);
     if (description) {
       formData.append('description', description);
     }
 
-    const res = await fetch(`${AI_SERVICE_URL}/kb/ingest/pdf`, {
-      method: 'POST',
-      body: formData,
-      signal: AbortSignal.timeout(120000),
+    const res = await axios.post(`${AI_SERVICE_URL}/kb/ingest/pdf`, formData, {
+      headers: formData.getHeaders(),
+      maxBodyLength: Infinity,
+      maxContentLength: Infinity,
+      timeout: 120000,
     });
 
-    if (res.ok) {
-      const result = await res.json();
+    if (res.status === 200) {
+      const result = res.data;
       await prisma.kbDocument.update({
         where: { id: docId },
         data: { chunkCount: result.chunk_count || 0, embeddedAt: new Date() },
       });
+    } else {
+      console.warn(`[KB] AI service returned error (${res.status}) during pdf embedding:`, res.data);
     }
   } catch (err) {
-    console.warn('[KB] Embedding unavailable:', err.message);
+    const errMsg = err.response?.data ? JSON.stringify(err.response.data) : err.message;
+    console.warn('[KB] Embedding unavailable:', errMsg);
   }
 }
 

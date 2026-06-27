@@ -24,7 +24,13 @@ def ingest_url(url: str, kb_id: str):
     chunks = chunk_text(full_text, source_label=url)
     
     if not chunks:
-        return {"collection_name": f"kb_{kb_id.replace('-', '_')}", "chunk_count": 0}
+        fallback_content = f"Web Reference URL: {url}\nScraped status: Empty or protected content"
+        chunks = [
+            Document(
+                page_content=fallback_content,
+                metadata={"source": url}
+            )
+        ]
 
     vectorstore = get_chroma_db(kb_id)
     vectorstore.add_documents(chunks)
