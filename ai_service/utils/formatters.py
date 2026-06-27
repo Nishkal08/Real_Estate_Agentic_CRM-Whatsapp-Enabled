@@ -34,6 +34,9 @@ def format_for_whatsapp(
     # Convert markdown lists (e.g. - item, * item, + item) to nice emoji bullets (🔹 item)
     text = re.sub(r'(?:^|\n)[-\*+]\s+', r'\n🔹 ', text)
 
+    # Convert markdown links [Text](URL) to "Text — URL" for WhatsApp compatibility
+    text = re.sub(r'\[(.*?)\]\((.*?)\)', r'\1 — \2', text)
+
     # Normalize multiple line breaks to maximum double newlines
     text = re.sub(r'\n{3,}', '\n\n', text.strip())
 
