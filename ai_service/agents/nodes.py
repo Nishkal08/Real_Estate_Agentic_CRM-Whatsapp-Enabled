@@ -186,16 +186,28 @@ def conversation_node(state: AgentState) -> dict:
 
     # Format reply for WhatsApp
     from utils.formatters import format_for_whatsapp
-    
+
     # Filter images and brochures based on conversation context (latest user message + agent response)
     user_msg = state["messages"][-1]["content"] if state["messages"] else ""
-    context_text = f"{user_msg} {final_reply}"
-    
+
     formatted_reply = format_for_whatsapp(
         reply=final_reply,
         brochure_url=brochure_found,
         has_images=len(images_found) > 0
     )
+
+    # ── Hard length cap: 900 chars ──────────────────────────────────
+    MAX_LEN = 900
+    if len(formatted_reply) > MAX_LEN:
+        # Try to gracefully truncate at last newline before limit
+        cut = formatted_reply[:MAX_LEN].rfind("\n")
+        if cut > MAX_LEN // 2:
+            formatted_reply = formatted_reply[:cut].rstrip()
+        else:
+            formatted_reply = formatted_reply[:MAX_LEN].rstrip()
+        # Add a CTA if it looks mid-sentence
+        if not formatted_reply.endswith(("?", "!", ".", "😊")):
+            formatted_reply += "\n\nWhich project would you like more details on?"
 
     return {
         "messages": [{"role": "agent", "content": formatted_reply}],

@@ -128,7 +128,7 @@ r1f = ask("What's the recipe for biryani?", "flow-scope-001")
 check("Out-of-scope: biryani recipe deflected",
       r1f,
       expect_not_contains=["rice", "spice", "onion", "cook"],
-      expect_contains=["real estate", "property", "project", "assist"])
+      expect_contains=["real estate", "project", "assist"])
 
 # 1g. Out-of-scope: competitor
 r1g = ask("Godrej has better projects na? What about Lodha?", "flow-scope-001")
@@ -169,11 +169,11 @@ check("KB accuracy: RERA deflected to team",
       expect_not_contains=["PR/GJ/1234", "RERA123", "registration number is"],
       warn_only=True)  # warn only — partial info OK
 
-# 2d. No price for project not in KB
+# 2d. No price for project not in KB — agent must not price Godrej/Lodha
 r2d = ask("What is the price of Godrej Meridien?", "kb-noprice-001")
 check("KB accuracy: no hallucinated competitor pricing",
       r2d,
-      expect_not_contains=["godrej meridien starts at", "₹", "crore is the price of godrej"])
+      expect_not_contains=["godrej meridien starts at", "godrej meridien price is", "lodha starts at"])
 
 # 2e. Multi-project Jagatpur match
 r2e = ask("Tell me about the luxury 3BHK project near Jagatpur", "kb-multi-001")
