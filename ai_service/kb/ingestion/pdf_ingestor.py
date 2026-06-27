@@ -22,10 +22,19 @@ def get_chroma_db(kb_id: str) -> Chroma:
 def ingest_pdf(file_path: str, kb_id: str, source_label: str = "brochure", description: str = None):
     """Extracts text from PDF, chunks it, and embeds via Mistral -> ChromaDB."""
     import os
-    reader = PdfReader(file_path)
     full_text = ""
-    for page in reader.pages:
-        full_text += page.extract_text() + "\n\n"
+    try:
+        reader = PdfReader(file_path)
+        for page in reader.pages:
+            try:
+                text = page.extract_text()
+                if text:
+                    full_text += text + "\n\n"
+            except Exception as page_err:
+                print(f"[PDF Ingest] Error extracting text from page: {page_err}")
+    except Exception as reader_err:
+        print(f"[PDF Ingest] Failed to read PDF file: {reader_err}")
+        full_text = ""
 
     # Extract dynamic context from filename or description
     filename = os.path.basename(file_path)
@@ -36,7 +45,14 @@ def ingest_pdf(file_path: str, kb_id: str, source_label: str = "brochure", descr
     chunks = chunk_text(full_text, source_label, context_prefix=context_prefix)
     
     if not chunks:
-        return {"collection_name": f"kb_{kb_id.replace('-', '_')}", "chunk_count": 0}
+        # Fallback for scanned/image-only PDFs: use clean filename context
+        fallback_content = f"Brochure Project: {clean_name}\nContext/Description: {description or 'Brochure document details'}"
+        chunks = [
+            Document(
+                page_content=fallback_content,
+                metadata={"source": source_label}
+            )
+        ]
 
     vectorstore = get_chroma_db(kb_id)
     vectorstore.add_documents(chunks)
