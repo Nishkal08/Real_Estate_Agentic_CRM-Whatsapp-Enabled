@@ -30,7 +30,7 @@ export default function AITester() {
   // KB Testing
   const [file, setFile] = useState(null);
   const [url, setUrl] = useState('');
-  const [kbId, setKbId] = useState('main-kb');
+  const [kbId, setKbId] = useState('abc57a29-99f8-4891-9749-df9126f0b22d');
   const [uploading, setUploading] = useState(false);
   const [sandboxKeyword, setSandboxKeyword] = useState('pain-breeze');
 

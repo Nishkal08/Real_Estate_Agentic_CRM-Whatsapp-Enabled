@@ -1,0 +1,58 @@
+﻿Total chunks: 17
+
+--- CHUNK 1 ---
+Project Name: Codename Cornerstone (Cornerstone)
+Developer: Reneev Developer Group (Reneev Developers)
+Location: Jagatpur, Ahmedabad, Gujarat, India.
+Project Type: Premium residential apartments and penthouses.
+Configuration: Premium 3 BHK apartments and 3 BHK & 4 BHK luxury penthouses.
+Key Features & Amenities: Modern architecture, high-speed elevators, children's play area, fully-equipped fitnes
+
+--- CHUNK 2 ---
+Brochure: http://127.0.0.1:8000/static/uploads/Life_In_Blue_Brochure.pdf | Description: Life In Blue 2BHK 3BHK apartments South Bopal Ahmedabad
+
+--- CHUNK 3 ---
+Project Name: Forever Young
+Developer: Reneev Developer Group (Reneev Developers / Forever Infra)
+Location: Near Lions Karnavati Hospital, Ognaj Circle, S.P. Ring Road, Ahmedabad, Gujarat, India.
+Project Type: Premium gated community of luxury bungalows.
+Configuration: Exclusive 4 BHK luxury bungalows / villas.
+Key Features & Amenities: Private elevator/lift in each villa, dedicated basement parki
+
+--- CHUNK 4 ---
+Project/Document Context: Reneev Page 22 luxury residential project
+. Lawn area
+7. Kids play area
+8. Movable tree planter
+9. Boundary plantation
+10. Movable seating and planter
+
+fIrst floor amenItIes typIcal floor plan
+
+3bhk apartments
+terrace
+layout
+5) Flooring Pattern
+6) Amphithreatre
+7) Grit Bed
+8) Gazebo And Senior
+    Citizen space
+9) Movable planter
+10) Outdoor kitchen
+11) Handwash Space
+12)
+
+--- CHUNK 5 ---
+python : Traceback (most recent call last):
+At line:1 char:1
++ python testing/check_db.py 2>&1 | Out-File -Encoding utf8 testing/kb_ ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Traceback (most recent call last)::String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+  File "C:\AI_Operations\ai_service\testing\check_db.py", line 24, in <module>
+    print(content[:400])
+  File "C:\Program Files\Python311\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\ufb01' in position 122: character maps to <undefined>
