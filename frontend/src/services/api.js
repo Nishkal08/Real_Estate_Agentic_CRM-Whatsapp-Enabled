@@ -35,19 +35,30 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
-      try {
-        const oldRefreshToken = useAuthStore.getState().refreshToken;
-        const res = await axios.post(`${apiBaseUrl}/auth/refresh`, { refreshToken: oldRefreshToken });
-        const { accessToken: newToken, refreshToken: newRefreshToken } = res.data.data;
-        useAuthStore.getState().setToken(newToken, newRefreshToken);
-        originalRequest.headers.Authorization = `Bearer ${newToken}`;
-        return api(originalRequest);
-      } catch (refreshError) {
+    if (error.response?.status === 401) {
+      if (!originalRequest._retry) {
+        originalRequest._retry = true;
+        try {
+          const oldRefreshToken = useAuthStore.getState().refreshToken;
+          if (!oldRefreshToken) {
+            useAuthStore.getState().logout();
+            window.location.href = '/login?expired=true';
+            return Promise.reject(error);
+          }
+          const res = await axios.post(`${apiBaseUrl}/auth/refresh`, { refreshToken: oldRefreshToken });
+          const { accessToken: newToken, refreshToken: newRefreshToken } = res.data.data;
+          useAuthStore.getState().setToken(newToken, newRefreshToken);
+          originalRequest.headers.Authorization = `Bearer ${newToken}`;
+          return api(originalRequest);
+        } catch (refreshError) {
+          useAuthStore.getState().logout();
+          window.location.href = '/login?expired=true';
+          return Promise.reject(refreshError);
+        }
+      } else {
+        // If it's already a retry request and still returns 401, refresh token was invalid
         useAuthStore.getState().logout();
-        window.location.href = '/login';
-        return Promise.reject(refreshError);
+        window.location.href = '/login?expired=true';
       }
     }
 

@@ -73,6 +73,71 @@ app.get('/api/health', (req, res) => {
   res.json({ success: true, status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// GET /api/health/system — Checks status of database, AI service, Twilio, and Calendar
+app.get('/api/health/system', async (req, res) => {
+  const health = {
+    api: { status: 'healthy', message: 'Online' },
+    database: { status: 'unknown', message: 'Checking...' },
+    aiService: { status: 'unknown', message: 'Checking...' },
+    twilio: { status: 'unknown', message: 'Checking...', limitExceeded: false },
+    googleCalendar: { status: 'stubbed', message: 'Credentials not configured' },
+  };
+
+  // 1. Database Check
+  try {
+    const prisma = require('./config/db');
+    await prisma.$queryRaw`SELECT 1`;
+    health.database = { status: 'healthy', message: 'PostgreSQL Connected' };
+  } catch (err) {
+    health.database = { status: 'unhealthy', message: err.message };
+  }
+
+  // 2. AI Service Check
+  try {
+    const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://127.0.0.1:8000';
+    const aiRes = await fetch(`${AI_SERVICE_URL}/kb`, { signal: AbortSignal.timeout(3000) });
+    if (aiRes.ok) {
+      health.aiService = { status: 'healthy', message: 'AI Engine Online' };
+    } else {
+      health.aiService = { status: 'unhealthy', message: `Returned status ${aiRes.status}` };
+    }
+  } catch (err) {
+    health.aiService = { status: 'offline', message: 'AI Engine Unreachable' };
+  }
+
+  // 3. Twilio Check
+  try {
+    if (!process.env.TWILIO_SSID || !process.env.TWILIO_AUTH) {
+      health.twilio = { status: 'unconfigured', message: 'Credentials missing' };
+    } else {
+      const twilio = require('twilio');
+      const client = twilio(process.env.TWILIO_SSID, process.env.TWILIO_AUTH);
+      const account = await client.api.accounts(process.env.TWILIO_SSID).fetch();
+      const recentMsgs = await client.messages.list({ limit: 3 });
+      const dailyLimitExceeded = recentMsgs.some(m => m.errorCode === 63038);
+      health.twilio = {
+        status: account.status === 'active' ? 'healthy' : 'suspended',
+        message: `Account: ${account.type} (${account.status})`,
+        limitExceeded: dailyLimitExceeded,
+      };
+    }
+  } catch (err) {
+    health.twilio = { status: 'error', message: err.message };
+  }
+
+  // 4. Google Calendar Check
+  try {
+    if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+      health.googleCalendar = { status: 'healthy', message: 'Google API Active' };
+    }
+  } catch (err) {
+    health.googleCalendar = { status: 'error', message: err.message };
+  }
+
+  res.json({ success: true, health });
+});
+
+
 // GET /api/health/twilio — Validate Twilio credentials without sending a message
 app.get('/api/health/twilio', async (req, res, next) => {
   try {

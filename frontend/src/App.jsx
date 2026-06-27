@@ -38,8 +38,8 @@ const queryClient = new QueryClient({
  * Protected route wrapper
  */
 function ProtectedRoute({ children }) {
-  const { isAuthenticated } = useAuthStore();
-  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  const { isAuthenticated, token } = useAuthStore();
+  if (!isAuthenticated || !token) return <Navigate to="/login" replace />;
   return children;
 }
 

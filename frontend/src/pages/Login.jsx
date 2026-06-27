@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, Zap, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
@@ -12,6 +12,17 @@ export default function Login() {
   const [form, setForm] = useState({ email: 'demo@solarbright.in', password: 'demo123' });
   const [showPass, setShowPass] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('expired') === 'true') {
+      // Small timeout to let UI mount
+      setTimeout(() => {
+        toast.error('Your session has expired. Please sign in again.', { title: 'Session Expired' });
+      }, 200);
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();

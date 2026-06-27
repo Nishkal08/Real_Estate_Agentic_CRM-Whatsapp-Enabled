@@ -53,7 +53,8 @@ export function useSSE() {
     if (apiBaseUrl !== '/api' && !apiBaseUrl.endsWith('/api')) {
       apiBaseUrl = apiBaseUrl.replace(/\/$/, '') + '/api';
     }
-    const es = new EventSource(`${apiBaseUrl}/events`, { withCredentials: true });
+    const token = useAuthStore.getState().token;
+    const es = new EventSource(`${apiBaseUrl}/events?token=${encodeURIComponent(token || '')}`, { withCredentials: true });
     esRef.current = es;
 
     es.onopen = () => {

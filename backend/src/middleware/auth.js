@@ -17,12 +17,17 @@ const auth = (req, res, next) => {
       return next();
     }
 
+    let token = null;
     const header = req.headers.authorization;
-    if (!header || !header.startsWith('Bearer ')) {
-      throw ApiError.unauthorized('Missing or malformed authorization header');
+    if (header && header.startsWith('Bearer ')) {
+      token = header.split(' ')[1];
+    } else if (req.query.token) {
+      token = req.query.token;
     }
 
-    const token = header.split(' ')[1];
+    if (!token) {
+      throw ApiError.unauthorized('Missing or malformed authorization header/token');
+    }
     const payload = verifyAccess(token);
 
     req.user = {

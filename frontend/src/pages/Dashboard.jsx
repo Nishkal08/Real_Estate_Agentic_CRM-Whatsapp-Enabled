@@ -35,6 +35,18 @@ const ACTIVITY_COLORS = {
   appointment_booked:{ bg: 'var(--success-bg)', color: 'var(--success)' },
 };
 
+const STATUS_COLORS = {
+  healthy:      { dot: 'var(--success)', bg: 'var(--success-bg)' },
+  online:       { dot: 'var(--success)', bg: 'var(--success-bg)' },
+  unhealthy:    { dot: 'var(--danger)',  bg: 'var(--danger-bg)' },
+  offline:      { dot: 'var(--danger)',  bg: 'var(--danger-bg)' },
+  error:        { dot: 'var(--danger)',  bg: 'var(--danger-bg)' },
+  suspended:    { dot: 'var(--danger)',  bg: 'var(--danger-bg)' },
+  unconfigured: { dot: 'var(--warning)', bg: 'var(--warning-bg)' },
+  stubbed:      { dot: 'var(--text-muted)', bg: 'var(--bg-surface)' },
+  unknown:      { dot: 'var(--text-muted)', bg: 'var(--bg-surface)' },
+};
+
 function getGreeting() {
   const hour = new Date().getHours();
   if (hour < 12) return 'Good morning';
@@ -51,6 +63,7 @@ export default function Dashboard() {
   const [hotLeads, setHotLeads] = useState([]);
   const [activeCampaign, setActiveCampaign] = useState(null);
   const [twilioLimitExceeded, setTwilioLimitExceeded] = useState(false);
+  const [systemHealth, setSystemHealth] = useState(null);
 
   const handleActivityClick = (act) => {
     useActivityStore.getState().markRead(act.id);
@@ -63,12 +76,13 @@ export default function Dashboard() {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const [statsRes, leadsRes, campaignsRes, activitiesRes, twilioRes] = await Promise.all([
+        const [statsRes, leadsRes, campaignsRes, activitiesRes, twilioRes, healthRes] = await Promise.all([
           api.get('/analytics/overview'),
           api.get('/leads?status=hot'),
           api.get('/campaigns'),
           api.get('/analytics/activity'),
-          api.get('/health/twilio').catch(() => ({ data: { success: false } }))
+          api.get('/health/twilio').catch(() => ({ data: { success: false } })),
+          api.get('/health/system').catch(() => ({ data: { success: false } }))
         ]);
         
         if (statsRes.data.success) setStats(statsRes.data.data);
@@ -82,6 +96,9 @@ export default function Dashboard() {
         }
         if (twilioRes.data.success && twilioRes.data.dailyLimitExceeded) {
           setTwilioLimitExceeded(true);
+        }
+        if (healthRes && healthRes.data && healthRes.data.success) {
+          setSystemHealth(healthRes.data.health);
         }
       } catch (err) {
         console.error("Failed to fetch dashboard data", err);
@@ -532,6 +549,61 @@ export default function Dashboard() {
             </div>
           )}
         </motion.div>
+      </motion.div>
+
+      {/* System Health Status Panel */}
+      <motion.div
+        className="card-no-hover mt-6"
+        variants={{ hidden: { opacity: 0, y: 14 }, visible: { opacity: 1, y: 0, transition: { duration: 0.35, ease: [0.22, 1, 0.36, 1] } } }}
+        initial="hidden"
+        animate="visible"
+      >
+        <div className="flex items-center gap-2 mb-4">
+          <Activity size={15} className="text-[var(--accent)]" />
+          <h3 className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)', opacity: 0.85 }}>System Health Monitor</h3>
+        </div>
+        
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[
+            { name: 'Core API Gateway', key: 'api', val: systemHealth?.api || { status: 'healthy', message: 'Online' } },
+            { name: 'PostgreSQL Database', key: 'database', val: systemHealth?.database || { status: 'unknown', message: 'Loading...' } },
+            { name: 'Mistral AI Engine', key: 'aiService', val: systemHealth?.aiService || { status: 'unknown', message: 'Loading...' } },
+            { name: 'Twilio WhatsApp Service', key: 'twilio', val: systemHealth?.twilio || { status: 'unknown', message: 'Loading...' } },
+          ].map((item) => {
+            const colors = STATUS_COLORS[item.val.status] || STATUS_COLORS.unknown;
+            return (
+              <div 
+                key={item.key}
+                className="p-3.5 rounded-xl flex items-center justify-between transition-all duration-200"
+                style={{
+                  background: 'var(--bg-surface)',
+                  border: '1px solid var(--border-subtle)',
+                }}
+                onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--border-strong)'}
+                onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border-subtle)'}
+              >
+                <div className="min-w-0">
+                  <p className="text-[11px] font-medium" style={{ color: 'var(--text-muted)' }}>{item.name}</p>
+                  <p className="text-xs font-semibold truncate mt-0.5" style={{ color: 'var(--text-primary)' }}>
+                    {item.val.message}
+                  </p>
+                </div>
+                
+                <div 
+                  className="w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0 ml-3"
+                  style={{ background: colors.bg }}
+                >
+                  <span className="relative flex h-2 w-2">
+                    {item.val.status === 'healthy' || item.val.status === 'online' ? (
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ background: colors.dot }}></span>
+                    ) : null}
+                    <span className="relative inline-flex rounded-full h-2 w-2" style={{ background: colors.dot }}></span>
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </motion.div>
     </PageWrapper>
   );
