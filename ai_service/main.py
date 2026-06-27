@@ -229,23 +229,29 @@ async def list_kbs():
 
 @app.get("/kb/{kb_id}/documents")
 async def list_documents(kb_id: str):
-    """Lists documents in the KB for frontend compatibility."""
-    from kb.ingestion.pdf_ingestor import get_chroma_db
+    """Lists documents in the KB using pgvector metadata."""
+    from kb.vector_store import get_engine, _collection_name
+    from sqlalchemy import text
     try:
-        vectorstore = get_chroma_db(kb_id)
-        collection = vectorstore._collection
-        data = collection.get(include=["metadatas"])
+        engine = get_engine()
+        coll_name = _collection_name(kb_id)
+        with engine.connect() as conn:
+            rows = conn.execute(text("""
+                SELECT e.cmetadata->>'source' as source
+                FROM langchain_pg_embedding e
+                JOIN langchain_pg_collection c ON c.uuid = e.collection_id
+                WHERE c.name = :coll
+            """), {"coll": coll_name}).fetchall()
         
         docs = {}
-        for meta in data["metadatas"]:
-            if not meta: continue
-            src = meta.get("source", "Unknown")
+        for row in rows:
+            src = row[0] or "Unknown"
             if src not in docs:
                 name = src.split("/")[-1].split("\\")[-1] if ("/" in src or "\\" in src) else src
                 docs[src] = {
-                    "id": src, 
-                    "name": name, 
-                    "chunks": 0, 
+                    "id": src,
+                    "name": name,
+                    "chunks": 0,
                     "type": "url" if src.startswith("http") else "pdf",
                     "size": 0,
                     "uploadedAt": ""
@@ -259,11 +265,20 @@ async def list_documents(kb_id: str):
 
 @app.delete("/kb/{kb_id}/document")
 async def delete_document(kb_id: str, source: str):
-    from kb.ingestion.pdf_ingestor import get_chroma_db
+    """Delete a document from pgvector by source metadata."""
+    from kb.vector_store import get_engine, _collection_name
+    from sqlalchemy import text
     try:
-        vectorstore = get_chroma_db(kb_id)
-        collection = vectorstore._collection
-        collection.delete(where={"source": source})
+        engine = get_engine()
+        coll_name = _collection_name(kb_id)
+        with engine.begin() as conn:
+            conn.execute(text("""
+                DELETE FROM langchain_pg_embedding e
+                USING langchain_pg_collection c
+                WHERE c.uuid = e.collection_id
+                  AND c.name = :coll
+                  AND e.cmetadata->>'source' = :source
+            """), {"coll": coll_name, "source": source})
         return {"success": True}
     except Exception as e:
         print(f"delete_document error: {e}")

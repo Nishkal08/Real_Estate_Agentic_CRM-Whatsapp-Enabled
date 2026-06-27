@@ -233,7 +233,8 @@ async function initiateSandboxDemoOutreach(campaignId, businessId) {
 
   // Fetch campaign config
   const campaign = await prisma.campaign.findFirst({
-    where: { id: campaignId, businessId }
+    where: { id: campaignId, businessId },
+    include: { kb: true }
   });
   if (!campaign) {
     console.error('[Demo Outreach] Campaign not found');
@@ -326,7 +327,7 @@ async function initiateSandboxDemoOutreach(campaignId, businessId) {
           lead_id: lead.id,
           lead_name: lead.name,
           message: instruction,
-          kb_id: 'main-kb',
+          kb_id: campaign?.kbId || campaign?.kb?.id || 'main-kb',
           campaign_id: campaignId,
           campaign_config: { agent_name: agentName, agent_tone: agentTone, language }
         })
