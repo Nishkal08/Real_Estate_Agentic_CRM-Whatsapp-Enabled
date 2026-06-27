@@ -15,8 +15,7 @@ router.post('/upload', auth, upload.single('file'), async (req, res, next) => {
     let campaignId = req.body.campaignId;
     
     if (!campaignId || campaignId === 'undefined') {
-      const { PrismaClient } = require('@prisma/client');
-      const prisma = new PrismaClient();
+      const prisma = require('../config/db');
       let firstCampaign = await prisma.campaign.findFirst({
         where: { businessId: req.user.businessId }
       });
