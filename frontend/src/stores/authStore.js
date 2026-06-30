@@ -42,10 +42,10 @@ const useAuthStore = create(
         }
       },
 
-      register: async (name, email, password, businessName) => {
+      register: async (name, email, password, businessName, phone) => {
         set({ isLoading: true, error: null });
         try {
-          const res = await axios.post(`${apiBaseUrl}/auth/register`, { name, email, password, businessName });
+          const res = await axios.post(`${apiBaseUrl}/auth/register`, { name, email, password, businessName, phone });
           const { user, accessToken, refreshToken } = res.data.data;
           
           set({

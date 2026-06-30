@@ -8,7 +8,7 @@ const SALT_ROUNDS = 10;
 /**
  * Register a new business + owner account
  */
-async function register({ name, email, password, businessName }) {
+async function register({ name, email, password, businessName, phone }) {
   const existing = await prisma.business.findUnique({ where: { ownerEmail: email } });
   if (existing) throw ApiError.conflict('Email already registered');
 
@@ -19,6 +19,7 @@ async function register({ name, email, password, businessName }) {
       name: businessName || name,
       ownerEmail: email,
       passwordHash,
+      waNumber: phone || null,
     },
   });
 

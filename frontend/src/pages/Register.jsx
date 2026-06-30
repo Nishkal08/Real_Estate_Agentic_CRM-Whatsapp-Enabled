@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Zap, ArrowRight, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
@@ -8,7 +8,7 @@ import { toast } from '@/stores/uiStore';
 
 export default function Register() {
   const navigate = useNavigate();
-  const { register } = useAuthStore();
+  const { register, isAuthenticated } = useAuthStore();
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
     name: '',
@@ -18,10 +18,16 @@ export default function Register() {
     phone: '',
   });
 
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [isAuthenticated, navigate]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    const result = await register(form.name, form.email, form.password, form.businessName);
+    const result = await register(form.name, form.email, form.password, form.businessName, form.phone);
     setLoading(false);
     
     if (result.success) {

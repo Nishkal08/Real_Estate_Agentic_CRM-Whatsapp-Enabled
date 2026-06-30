@@ -8,10 +8,16 @@ import { toast } from '@/stores/uiStore';
 
 export default function Login() {
   const navigate = useNavigate();
-  const { login, isLoading } = useAuthStore();
+  const { login, isLoading, isAuthenticated } = useAuthStore();
   const [form, setForm] = useState({ email: 'demo@solarbright.in', password: 'demo123' });
   const [showPass, setShowPass] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [isAuthenticated, navigate]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
