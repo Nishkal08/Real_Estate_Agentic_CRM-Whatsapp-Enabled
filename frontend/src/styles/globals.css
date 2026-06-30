@@ -361,6 +361,16 @@ code, pre, .font-mono {
 }
 .btn-secondary:hover { background: var(--bg-glass-strong); border-color: var(--border-subtle); }
 
+.btn-outline {
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+}
+.btn-outline:hover:not(:disabled) {
+  background: var(--bg-glass-strong);
+  border-color: var(--border-strong);
+}
+
 .btn-ghost {
   background: transparent;
   color: var(--text-secondary);
