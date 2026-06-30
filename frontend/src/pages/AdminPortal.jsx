@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Terminal, Users, Megaphone, MessageSquare, Trash2, Building, BarChart3, AlertCircle } from 'lucide-react';
+import { Terminal, Users, Megaphone, MessageSquare, Trash2, Building, BarChart3, Plus, ShieldCheck, X } from 'lucide-react';
 import { PageWrapper } from '@/components/layout/PageWrapper';
 import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
 import { toast } from '@/stores/uiStore';
 import api from '@/services/api';
 
@@ -10,6 +11,16 @@ export default function AdminPortal() {
   const [businesses, setBusinesses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState(null);
+  
+  // Create Modal State
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [createForm, setCreateForm] = useState({
+    name: '',
+    email: '',
+    password: '',
+    plan: 'starter'
+  });
+  const [creating, setCreating] = useState(false);
 
   const fetchData = async () => {
     try {
@@ -51,6 +62,33 @@ export default function AdminPortal() {
       toast.error(err.response?.data?.error || 'Failed to delete business');
     } finally {
       setDeletingId(null);
+    }
+  };
+
+  const handleUpdatePlan = async (bizId, newPlan) => {
+    try {
+      await api.put(`/admin/businesses/${bizId}/plan`, { plan: newPlan });
+      toast.success("Subscription plan updated successfully!");
+      // Update local state instantly
+      setBusinesses(prev => prev.map(b => b.id === bizId ? { ...b, plan: newPlan } : b));
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to update plan');
+    }
+  };
+
+  const handleCreateBusiness = async (e) => {
+    e.preventDefault();
+    setCreating(true);
+    try {
+      await api.post('/admin/businesses', createForm);
+      toast.success(`Successfully registered tenant "${createForm.name}"!`);
+      setShowCreateModal(false);
+      setCreateForm({ name: '', email: '', password: '', plan: 'starter' });
+      fetchData(); // Reload list
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to register business');
+    } finally {
+      setCreating(false);
     }
   };
 
@@ -96,7 +134,7 @@ export default function AdminPortal() {
             <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Active Campaigns</p>
             <h3 className="text-2xl font-bold mt-1" style={{ color: 'var(--text-primary)' }}>{stats?.campaigns || 0}</h3>
           </div>
-          <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-[rgba(59,130,246,0.1)] text-[var(--primary)]">
+          <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-[rgba(59,130,246,0.15)] text-[var(--primary)]">
             <Megaphone size={20} />
           </div>
         </div>
@@ -106,7 +144,7 @@ export default function AdminPortal() {
             <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Total WhatsApp Messages</p>
             <h3 className="text-2xl font-bold mt-1" style={{ color: 'var(--text-primary)' }}>{stats?.messages || 0}</h3>
           </div>
-          <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-[rgba(245,158,11,0.1)] text-[var(--warning)]">
+          <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-[rgba(245,158,11,0.15)] text-[var(--warning)]">
             <MessageSquare size={20} />
           </div>
         </div>
@@ -117,11 +155,16 @@ export default function AdminPortal() {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h2 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>Manage Tenants</h2>
-            <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>View and monitor registered business accounts on Aurion CRM.</p>
+            <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>View, add, and monitor registered business accounts on Aurion CRM.</p>
           </div>
-          <Button variant="outline" size="sm" onClick={fetchData} icon={<BarChart3 size={13} />}>
-            Refresh List
-          </Button>
+          <div className="flex items-center gap-3">
+            <Button variant="outline" size="sm" onClick={fetchData} icon={<BarChart3 size={13} />}>
+              Refresh List
+            </Button>
+            <Button variant="primary" size="sm" onClick={() => setShowCreateModal(true)} icon={<Plus size={13} />}>
+              Create Tenant
+            </Button>
+          </div>
         </div>
 
         <div className="overflow-x-auto">
@@ -129,7 +172,7 @@ export default function AdminPortal() {
             <thead>
               <tr style={{ borderBottom: '1.5px solid var(--border-subtle)' }}>
                 <th className="pb-3 text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Business Info</th>
-                <th className="pb-3 text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Plan / Number</th>
+                <th className="pb-3 text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Plan & WhatsApp</th>
                 <th className="pb-3 text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Leads</th>
                 <th className="pb-3 text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Campaigns</th>
                 <th className="pb-3 text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Created</th>
@@ -146,19 +189,32 @@ export default function AdminPortal() {
                         {biz.name}
                         {isSelf && (
                           <span className="ml-2 px-1.5 py-0.5 rounded text-[10px] font-bold tracking-wide uppercase bg-[rgba(59,130,246,0.15)] text-[var(--primary)]">
-                            Self
+                            Admin Account
                           </span>
                         )}
                       </div>
                       <div className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>{biz.email}</div>
                     </td>
                     <td className="py-4">
-                      <span className="text-[11px] font-bold uppercase px-2 py-0.5 rounded" style={{
-                        background: biz.plan === 'enterprise' ? 'rgba(245,158,11,0.1)' : 'var(--border-subtle)',
-                        color: biz.plan === 'enterprise' ? 'var(--warning)' : 'var(--text-primary)'
-                      }}>
-                        {biz.plan}
-                      </span>
+                      {isSelf ? (
+                        <span className="text-[11px] font-bold uppercase px-2 py-0.5 rounded bg-[rgba(245,158,11,0.15)] text-[var(--warning)]">
+                          {biz.plan}
+                        </span>
+                      ) : (
+                        <select
+                          value={biz.plan}
+                          onChange={(e) => handleUpdatePlan(biz.id, e.target.value)}
+                          className="text-[11px] font-bold uppercase px-1 py-0.5 rounded border bg-[var(--bg-elevated)]"
+                          style={{
+                            color: biz.plan === 'enterprise' ? 'var(--warning)' : 'var(--text-primary)',
+                            borderColor: 'var(--border-subtle)',
+                          }}
+                        >
+                          <option value="starter">Starter</option>
+                          <option value="pro">Pro</option>
+                          <option value="enterprise">Enterprise</option>
+                        </select>
+                      )}
                       <div className="text-xs mt-1.5" style={{ color: 'var(--text-muted)' }}>{biz.waNumber || 'Not Linked'}</div>
                     </td>
                     <td className="py-4 text-sm" style={{ color: 'var(--text-primary)' }}>{biz.stats.leads}</td>
@@ -184,6 +240,83 @@ export default function AdminPortal() {
           </table>
         </div>
       </div>
+
+      {/* Create Tenant Modal */}
+      {showCreateModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div
+            className="w-full max-w-md rounded-2xl p-6"
+            style={{
+              background: 'var(--bg-glass-strong)',
+              border: '1px solid var(--border-subtle)',
+              boxShadow: 'var(--shadow-float)',
+              backdropFilter: 'var(--blur-md)'
+            }}
+          >
+            <div className="flex items-center justify-between mb-5">
+              <h3 className="text-md font-bold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+                <Building size={16} /> Register New Tenant
+              </h3>
+              <button onClick={() => setShowCreateModal(false)} className="btn-icon p-1">
+                <X size={15} />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateBusiness} className="space-y-4">
+              <Input
+                label="Business Name"
+                value={createForm.name}
+                onChange={e => setCreateForm(f => ({ ...f, name: e.target.value }))}
+                placeholder="e.g. Sterling Realities"
+                required
+              />
+
+              <Input
+                label="Owner Email Address"
+                type="email"
+                value={createForm.email}
+                onChange={e => setCreateForm(f => ({ ...f, email: e.target.value }))}
+                placeholder="e.g. admin@sterling.com"
+                required
+              />
+
+              <Input
+                label="Default Password"
+                type="password"
+                value={createForm.password}
+                onChange={e => setCreateForm(f => ({ ...f, password: e.target.value }))}
+                placeholder="Password"
+                required
+              />
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+                  Subscription Tier
+                </label>
+                <select
+                  value={createForm.plan}
+                  onChange={e => setCreateForm(f => ({ ...f, plan: e.target.value }))}
+                  className="w-full p-2.5 rounded-xl border text-sm bg-[var(--bg-elevated)]"
+                  style={{ borderColor: 'var(--border-subtle)', color: 'var(--text-primary)' }}
+                >
+                  <option value="starter">Starter Plan</option>
+                  <option value="pro">Pro Plan</option>
+                  <option value="enterprise">Enterprise Plan</option>
+                </select>
+              </div>
+
+              <div className="flex gap-3 mt-6">
+                <Button variant="outline" type="button" className="flex-1 justify-center" onClick={() => setShowCreateModal(false)}>
+                  Cancel
+                </Button>
+                <Button variant="primary" type="submit" className="flex-1 justify-center" loading={creating}>
+                  Create Business
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </PageWrapper>
   );
 }

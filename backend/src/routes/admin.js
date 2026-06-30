@@ -5,16 +5,16 @@ const ApiError = require('../utils/apiError');
 
 const router = Router();
 
-// Middleware to ensure user is super admin
-function requireSuperAdmin(req, res, next) {
+// Middleware to ensure user is admin
+function requireAdmin(req, res, next) {
   if (req.user?.email !== 'nishkal2005@gmail.com') {
-    return next(ApiError.forbidden('Forbidden: Super Admin access required'));
+    return next(ApiError.forbidden('Forbidden: Admin access required'));
   }
   next();
 }
 
 // GET /api/admin/stats — Retrieve overall platform metrics
-router.get('/stats', auth, requireSuperAdmin, async (req, res, next) => {
+router.get('/stats', auth, requireAdmin, async (req, res, next) => {
   try {
     const [businessesCount, leadsCount, campaignsCount, messagesCount] = await Promise.all([
       prisma.business.count(),
@@ -36,7 +36,7 @@ router.get('/stats', auth, requireSuperAdmin, async (req, res, next) => {
 });
 
 // GET /api/admin/businesses — Retrieve all businesses on the platform
-router.get('/businesses', auth, requireSuperAdmin, async (req, res, next) => {
+router.get('/businesses', auth, requireAdmin, async (req, res, next) => {
   try {
     const businesses = await prisma.business.findMany({
       orderBy: { createdAt: 'desc' },
@@ -72,7 +72,7 @@ router.get('/businesses', auth, requireSuperAdmin, async (req, res, next) => {
 });
 
 // DELETE /api/admin/businesses/:id — Delete a business completely
-router.delete('/businesses/:id', auth, requireSuperAdmin, async (req, res, next) => {
+router.delete('/businesses/:id', auth, requireAdmin, async (req, res, next) => {
   try {
     const { id } = req.params;
 
@@ -80,7 +80,7 @@ router.delete('/businesses/:id', auth, requireSuperAdmin, async (req, res, next)
     if (!targetBiz) throw ApiError.notFound('Business not found');
 
     if (targetBiz.ownerEmail === 'nishkal2005@gmail.com') {
-      throw ApiError.forbidden('Cannot delete the Super Admin business');
+      throw ApiError.forbidden('Cannot delete the Admin business');
     }
 
     // Safe dependency wipeout for the business
@@ -105,6 +105,53 @@ router.delete('/businesses/:id', auth, requireSuperAdmin, async (req, res, next)
     await prisma.business.delete({ where: { id } });
 
     res.json({ success: true, message: 'Business successfully deleted' });
+  } catch (err) { next(err); }
+});
+
+// PUT /api/admin/businesses/:id/plan — Update a business plan
+router.put('/businesses/:id/plan', auth, requireAdmin, async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { plan } = req.body;
+
+    if (!['starter', 'pro', 'enterprise'].includes(plan)) {
+      throw ApiError.badRequest('Invalid plan type');
+    }
+
+    const updated = await prisma.business.update({
+      where: { id },
+      data: { plan },
+    });
+
+    res.json({ success: true, data: updated });
+  } catch (err) { next(err); }
+});
+
+// POST /api/admin/businesses — Create a new business account
+router.post('/businesses', auth, requireAdmin, async (req, res, next) => {
+  try {
+    const { name, email, password, plan } = req.body;
+
+    if (!name || !email || !password) {
+      throw ApiError.badRequest('Missing required fields (name, email, password)');
+    }
+
+    const existing = await prisma.business.findUnique({ where: { ownerEmail: email } });
+    if (existing) throw ApiError.conflict('Email already registered');
+
+    const bcrypt = require('bcryptjs');
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    const business = await prisma.business.create({
+      data: {
+        name,
+        ownerEmail: email,
+        passwordHash,
+        plan: plan || 'starter',
+      },
+    });
+
+    res.status(201).json({ success: true, data: business });
   } catch (err) { next(err); }
 });
 

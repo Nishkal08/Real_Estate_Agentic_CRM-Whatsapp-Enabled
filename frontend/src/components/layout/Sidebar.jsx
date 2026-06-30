@@ -48,9 +48,9 @@ export function Sidebar() {
   const user = useAuthStore(state => state.user);
   const location = useLocation();
 
-  const isSuperAdmin = user?.role === 'super_admin';
+  const isAdmin = user?.email === 'nishkal2005@gmail.com';
   const navGroups = [...NAV_GROUPS];
-  if (isSuperAdmin) {
+  if (isAdmin) {
     navGroups.push({
       label: 'Admin',
       items: [
