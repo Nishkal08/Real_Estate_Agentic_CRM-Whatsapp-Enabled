@@ -22,6 +22,14 @@ router.post('/login', authLimiter, validate(['email', 'password']), async (req, 
   } catch (err) { next(err); }
 });
 
+// POST /api/auth/demo-login
+router.post('/demo-login', authLimiter, async (req, res, next) => {
+  try {
+    const result = await authService.demoLogin();
+    res.json({ success: true, data: result });
+  } catch (err) { next(err); }
+});
+
 // POST /api/auth/refresh
 router.post('/refresh', validate(['refreshToken']), async (req, res, next) => {
   try {

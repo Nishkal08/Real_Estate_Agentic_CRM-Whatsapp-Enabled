@@ -42,6 +42,27 @@ const useAuthStore = create(
         }
       },
 
+      demoLogin: async () => {
+        set({ isLoading: true, error: null });
+        try {
+          const res = await axios.post(`${apiBaseUrl}/auth/demo-login`);
+          const { user, accessToken, refreshToken } = res.data.data;
+          
+          set({
+            isAuthenticated: true,
+            isLoading: false,
+            user,
+            token: accessToken,
+            refreshToken,
+          });
+          return { success: true };
+        } catch (err) {
+          const message = err.response?.data?.error || err.message;
+          set({ isLoading: false, error: message });
+          return { success: false, error: message };
+        }
+      },
+
       register: async (name, email, password, businessName, phone) => {
         set({ isLoading: true, error: null });
         try {

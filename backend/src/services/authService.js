@@ -249,5 +249,33 @@ async function resetDemoData(businessId) {
   return { reset: true };
 }
 
-module.exports = { register, login, refreshToken, getProfile, updateProfile, resetDemoData };
+async function demoLogin() {
+  const demoEmail = 'demo@solarbright.in';
+  const business = await prisma.business.findUnique({ where: { ownerEmail: demoEmail } });
+  if (!business) {
+    throw ApiError.notFound('Demo user not found. Please run seed script first.');
+  }
+
+  const tokens = generateTokens(business.id, business.id);
+
+  return {
+    user: {
+      id:             business.id,
+      name:           business.name,
+      email:          business.ownerEmail,
+      role:           business.ownerEmail === 'nishkal2005@gmail.com' ? 'super_admin' : 'admin',
+      avatarInitials: business.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase(),
+      businessId:     business.id,
+      business: {
+        id:   business.id,
+        name: business.name,
+        plan: business.plan,
+      },
+    },
+    ...tokens,
+  };
+}
+
+module.exports = { register, login, refreshToken, getProfile, updateProfile, resetDemoData, demoLogin };
+
 

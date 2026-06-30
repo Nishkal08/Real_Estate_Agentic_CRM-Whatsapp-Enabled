@@ -60,6 +60,7 @@ function AppRoot() {
       {/* Public routes */}
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
+      <Route path="/signup" element={<Register />} />
       <Route path="/onboarding" element={<Onboarding />} />
 
       {/* Protected app routes */}

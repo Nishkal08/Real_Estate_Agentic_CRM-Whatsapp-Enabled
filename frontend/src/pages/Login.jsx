@@ -1,17 +1,20 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, Zap, ArrowRight } from 'lucide-react';
+import { Mail, Lock, ArrowRight, Activity } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
+import { FloatingLabelInput } from '@/components/ui/FloatingLabelInput';
+import { BrandPanel } from '@/components/ui/BrandPanel';
 import useAuthStore from '@/stores/authStore';
 import { toast } from '@/stores/uiStore';
+import api from '@/services/api';
 
 export default function Login() {
   const navigate = useNavigate();
-  const { login, isLoading, isAuthenticated } = useAuthStore();
-  const [form, setForm] = useState({ email: 'demo@solarbright.in', password: 'demo123' });
-  const [showPass, setShowPass] = useState(false);
+  const { login, demoLogin, isLoading, isAuthenticated } = useAuthStore();
+  const [form, setForm] = useState({ email: '', password: '' });
   const [error, setError] = useState('');
+  const [demoSigningIn, setDemoSigningIn] = useState(false);
+  const [liveStats, setLiveStats] = useState(null);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -19,10 +22,10 @@ export default function Login() {
     }
   }, [isAuthenticated, navigate]);
 
+  // Load session expiry warnings or messages
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('expired') === 'true') {
-      // Small timeout to let UI mount
       setTimeout(() => {
         toast.error('Your session has expired. Please sign in again.', { title: 'Session Expired' });
       }, 200);
@@ -30,12 +33,37 @@ export default function Login() {
     }
   }, []);
 
+  // Try to pull live values if available (unauthenticated call will fail, which is expected/handled by omitting)
+  useEffect(() => {
+    const fetchPublicStats = async () => {
+      try {
+        const res = await api.get('/analytics/public-overview');
+        if (res.data?.success) {
+          setLiveStats([
+            { value: res.data.data.messagesToday || '0', label: 'Messages Today' },
+            { value: res.data.data.activeLeads || '0', label: 'Active Leads' }
+          ]);
+        }
+      } catch (err) {
+        // Silent fall-through: stats row is omitted as per requirement
+        setLiveStats(null);
+      }
+    };
+    fetchPublicStats();
+  }, []);
+
+  const validateEmail = (email) => {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  };
+
+  const isEmailValid = validateEmail(form.email);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     const result = await login(form.email, form.password);
     if (result.success) {
-      toast.success('Signed in successfully!');
+      toast.success('Welcome back!');
       navigate('/dashboard');
     } else {
       const errMsg = result.error || 'Invalid credentials. Please try again.';
@@ -46,165 +74,122 @@ export default function Login() {
 
   const handleDemoLogin = async () => {
     setError('');
-    const demoEmail = 'demo@solarbright.in';
-    const demoPassword = 'demo123';
-    setForm({ email: demoEmail, password: demoPassword });
-
-    const result = await login(demoEmail, demoPassword);
+    setDemoSigningIn(true);
+    const result = await demoLogin();
     if (result.success) {
-      toast.success('Welcome back! Signed in with Demo Account.');
+      toast.success('Signed in successfully with Demo Account.');
       navigate('/dashboard');
     } else {
       const errMsg = result.error || 'Demo login failed.';
       setError(errMsg);
       toast.error(errMsg);
+      setDemoSigningIn(false);
     }
   };
 
   return (
-    <div
-      className="min-h-screen flex items-center justify-center p-4"
-      style={{
-        backgroundColor: 'var(--bg-page)',
-        backgroundImage: `
-          var(--grain-url),
-          radial-gradient(at 15% 15%, rgba(196, 101, 74, 0.08) 0px, transparent 55%),
-          radial-gradient(at 85% 85%, rgba(74, 103, 65, 0.05) 0px, transparent 50%),
-          radial-gradient(at 50% 0%,   rgba(196, 101, 74, 0.03) 0px, transparent 60%)
-        `,
-      }}
-    >
-      <div className="w-full max-w-sm">
-        {/* Logo */}
-        <div className="flex items-center justify-center gap-2.5 mb-8">
-          <div
-            className="w-8 h-8 rounded-full flex items-center justify-center"
-            style={{ background: 'var(--accent)', boxShadow: '0 2px 8px rgba(196,101,74,0.3)' }}
-          >
-            <Zap size={15} color="#fff" strokeWidth={2.5} />
-          </div>
-          <span
-            className="text-xl font-bold"
-            style={{
-              color: 'var(--text-primary)',
-              fontFamily: 'var(--font-display)',
-              letterSpacing: '-0.02em',
-            }}
-          >
-            Aurion
-          </span>
-        </div>
+    <div className="min-h-screen flex flex-col md:flex-row bg-[var(--page-primary)]">
+      {/* Brand left panel (40% width) */}
+      <BrandPanel
+        headline="Your AI sales team never sleeps"
+        subtitle="WhatsApp-first lead qualification for your business, running 24/7."
+        accentColor="#D85A30" // Terracotta Orange
+        iconBg="rgba(216, 90, 48, 0.15)"
+        stats={liveStats || []}
+      />
 
-        {/* Card */}
-        <div
-          className="rounded-[16px] p-7"
-          style={{
-            background: 'var(--bg-glass-strong)',
-            border: '1px solid var(--border-subtle)',
-            boxShadow: 'var(--shadow-float)',
-            backdropFilter: 'var(--blur-md)',
-            WebkitBackdropFilter: 'var(--blur-md)',
-          }}
-        >
-          <h1
-            className="text-xl mb-1 font-semibold"
-            style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-display)', letterSpacing: '-0.01em' }}
-          >
-            Welcome back
-          </h1>
-          <p className="text-sm mb-6" style={{ color: 'var(--text-secondary)' }}>
-            Sign in to your AI operations dashboard
-          </p>
+      {/* Form right panel (60% width) */}
+      <div className="flex-1 flex items-center justify-center p-6 md:p-12 lg:p-20 bg-[var(--page-primary)]">
+        <div className="w-full max-w-[420px] py-8">
+          {/* Form Header */}
+          <div className="mb-8">
+            <h2
+              className="text-2xl font-extrabold tracking-tight"
+              style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-body)' }}
+            >
+              Welcome back
+            </h2>
+            <p className="text-xs mt-1.5 font-medium" style={{ color: 'var(--text-secondary)' }}>
+              Sign in to your AI operations dashboard
+            </p>
+          </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            <Input
-              label="Email"
+            <FloatingLabelInput
+              label="Email Address"
               type="email"
+              icon={Mail}
               value={form.email}
               onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
               placeholder="you@company.com"
+              accentColor="#D85A30"
+              isValid={isEmailValid}
+              showSuccessCheckmark={true}
               required
             />
-            <div className="relative">
-              <Input
-                label="Password"
-                type={showPass ? 'text' : 'password'}
-                value={form.password}
-                onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
-                placeholder="Your password"
-                required
-                iconRight={
-                  <button type="button" onClick={() => setShowPass(v => !v)} className="btn-icon p-0">
-                    {showPass ? <EyeOff size={13} /> : <Eye size={13} />}
-                  </button>
-                }
-              />
-            </div>
+
+            <FloatingLabelInput
+              label="Password"
+              type="password"
+              icon={Lock}
+              value={form.password}
+              onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
+              placeholder="••••••••"
+              accentColor="#D85A30"
+              required
+            />
 
             {error && (
-              <p className="text-xs" style={{ color: 'var(--danger)' }}>{error}</p>
+              <p className="text-xs text-[var(--danger)] font-medium pl-1.5">
+                ⚠️ {error}
+              </p>
             )}
 
             <Button
               type="submit"
               variant="primary"
-              className="w-full justify-center"
-              loading={isLoading}
-              iconRight={<ArrowRight size={14} />}
+              className="w-full h-12 justify-center rounded-xl text-sm font-semibold mt-6 transition-all"
+              style={{ background: 'var(--accent)', borderColor: 'var(--accent)' }}
+              loading={isLoading && !demoSigningIn}
+              iconRight={<ArrowRight size={15} />}
             >
               Sign in
             </Button>
           </form>
 
-          {/* Quick Demo Action Alert */}
-          <div
-            className="mt-5 p-3 rounded-xl flex flex-col gap-2 items-center"
-            style={{
-              background: 'var(--accent-light)',
-              border: '1px solid rgba(196, 101, 74, 0.15)',
-            }}
-          >
-            <p className="text-xs text-center" style={{ color: 'var(--accent-text)', fontWeight: 500 }}>
-              Testing the platform?
-            </p>
-            <div className="w-full text-[10px] font-mono text-center" style={{ color: 'var(--text-muted)', lineHeight: 1.8 }}>
-              <span style={{ color: 'var(--text-secondary)' }}>demo@solarbright.in</span>
-              {' · '}
-              <span style={{ color: 'var(--text-secondary)' }}>demo123</span>
+          {/* Divider */}
+          <div className="relative my-6 flex items-center justify-center">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-[var(--border-subtle)]" />
             </div>
-            <button
-              type="button"
-              onClick={handleDemoLogin}
-              disabled={isLoading}
-              style={{
-                fontFamily: 'var(--font-body)',
-                fontSize: 12,
-                fontWeight: 600,
-                color: '#fff',
-                background: 'var(--accent)',
-                border: 'none',
-                borderRadius: '6px',
-                padding: '6.5px 12px',
-                cursor: 'pointer',
-                transition: 'background 0.14s',
-                width: '100%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 6,
-              }}
-              onMouseEnter={e => (e.currentTarget.style.background = 'var(--accent-hover)')}
-              onMouseLeave={e => (e.currentTarget.style.background = 'var(--accent)')}
+            <span
+              className="relative px-3 text-[10px] font-bold uppercase tracking-wider bg-[var(--page-primary)]"
+              style={{ color: 'var(--text-disabled)' }}
             >
-              Sign in as Demo User <ArrowRight size={13} />
-            </button>
+              or
+            </span>
           </div>
 
-          <div className="divider my-5" style={{ opacity: 0.6 }} />
+          {/* Try Instant Demo Action */}
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full h-12 justify-center rounded-xl text-sm font-semibold transition-all hover:bg-[rgba(216,90,48,0.06)]"
+            style={{ borderColor: 'var(--border-subtle)' }}
+            onClick={handleDemoLogin}
+            loading={demoSigningIn}
+          >
+            {demoSigningIn ? 'Signing in as demo user...' : 'Try instant demo'}
+          </Button>
 
-          <p className="text-xs text-center" style={{ color: 'var(--text-muted)' }}>
+          {/* Footer Link */}
+          <p className="text-xs text-center mt-8 font-medium" style={{ color: 'var(--text-disabled)' }}>
             New to Aurion?{' '}
-            <Link to="/register" className="font-semibold" style={{ color: 'var(--accent)' }}>
+            <Link
+              to="/signup"
+              className="font-bold hover:underline transition-all ml-1"
+              style={{ color: 'var(--accent)' }}
+            >
               Create account
             </Link>
           </p>
