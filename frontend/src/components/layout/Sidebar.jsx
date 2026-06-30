@@ -45,7 +45,19 @@ const NAV_GROUPS = [
 export function Sidebar() {
   const { sidebarCollapsed, toggleSidebar } = useUIStore();
   const logout = useAuthStore(state => state.logout);
+  const user = useAuthStore(state => state.user);
   const location = useLocation();
+
+  const isSuperAdmin = user?.role === 'super_admin';
+  const navGroups = [...NAV_GROUPS];
+  if (isSuperAdmin) {
+    navGroups.push({
+      label: 'Admin',
+      items: [
+        { to: '/admin', icon: <Terminal size={17} />, label: 'Admin Portal' }
+      ]
+    });
+  }
 
   return (
     <motion.aside
@@ -98,7 +110,7 @@ export function Sidebar() {
 
       {/* Nav Groups */}
       <nav className="flex-1 overflow-y-auto overflow-x-hidden space-y-1">
-        {NAV_GROUPS.map((group) => (
+        {navGroups.map((group) => (
           <div key={group.label} className="mb-1">
             {/* Group label */}
             <AnimatePresence>

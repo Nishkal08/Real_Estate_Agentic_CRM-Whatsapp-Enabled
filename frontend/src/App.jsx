@@ -19,6 +19,7 @@ import BookingAgent from '@/pages/BookingAgent';
 import Analytics from '@/pages/Analytics';
 import Settings from '@/pages/Settings';
 import AITester from '@/pages/AITester';
+import AdminPortal from '@/pages/AdminPortal';
 
 // Pages — public
 import Login from '@/pages/Login';
@@ -83,6 +84,7 @@ function AppRoot() {
         <Route path="booking" element={<BookingAgent />} />
         <Route path="analytics" element={<Analytics />} />
         <Route path="settings" element={<Settings />} />
+        <Route path="admin" element={<AdminPortal />} />
         <Route path="ai-tester" element={<AITester />} />
 
         {/* 404 fallback */}

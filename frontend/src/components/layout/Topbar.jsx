@@ -20,6 +20,7 @@ const ROUTE_TITLES = {
   '/analytics':      'Analytics',
   '/knowledge-base': 'Knowledge Base',
   '/settings':       'Settings',
+  '/admin':          'Admin Portal',
 };
 
 function getTitle(pathname) {

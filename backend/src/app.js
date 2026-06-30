@@ -16,6 +16,7 @@ const analyticsRoutes    = require('./routes/analytics');
 const bookingRoutes      = require('./routes/booking');
 const eventsRoute        = require('./routes/events');
 const contentRoutes      = require('./routes/content');
+const adminRoutes        = require('./routes/admin');
 const whatsappWebhook    = require('./webhooks/whatsapp');
 
 const app = express();
@@ -64,6 +65,7 @@ app.use('/api/analytics',     analyticsRoutes);
 app.use('/api/booking',       bookingRoutes);
 app.use('/api/events',        eventsRoute);
 app.use('/api/content',       contentRoutes);
+app.use('/api/admin',         adminRoutes);
 
 // ─── Webhooks (no auth, no rate limit) ───────────────────
 app.use('/webhook/whatsapp',  whatsappWebhook);

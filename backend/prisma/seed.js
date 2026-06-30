@@ -19,7 +19,19 @@ async function main() {
     },
   });
 
-  console.log('Demo business created:', demoBusiness.ownerEmail);
+  const adminPasswordHash = await bcrypt.hash('nishkal@810', 10);
+  const adminBusiness = await prisma.business.upsert({
+    where: { ownerEmail: 'nishkal0810@gmail.com' },
+    update: {},
+    create: {
+      name: 'Super Admin',
+      ownerEmail: 'nishkal0810@gmail.com',
+      passwordHash: adminPasswordHash,
+      plan: 'enterprise',
+    },
+  });
+
+  console.log('Seeding finished successfully.');
 }
 
 main()
