@@ -227,8 +227,10 @@ router.post('/status', async (req, res) => {
   res.sendStatus(200);
 
   try {
-    const { MessageSid, MessageStatus } = req.body;
+    const { MessageSid, MessageStatus, ErrorCode, ErrorMessage } = req.body;
     if (!MessageSid || !MessageStatus) return;
+
+    console.log(`[Twilio Status] SID: ${MessageSid} | Status: ${MessageStatus} | ErrorCode: ${ErrorCode || 'None'} | ErrorMessage: ${ErrorMessage || 'None'}`);
 
     await prisma.message.updateMany({
       where: { waMessageId: MessageSid },
