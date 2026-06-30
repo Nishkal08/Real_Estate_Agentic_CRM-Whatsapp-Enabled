@@ -6,11 +6,25 @@ const ApiError = require('../utils/apiError');
 const router = Router();
 
 // Middleware to ensure user is admin
-function requireAdmin(req, res, next) {
-  if (req.user?.email !== 'nishkal2005@gmail.com') {
-    return next(ApiError.forbidden('Forbidden: Admin access required'));
+async function requireAdmin(req, res, next) {
+  try {
+    if (!req.user?.businessId) {
+      return next(ApiError.forbidden('Forbidden: Admin access required'));
+    }
+    const business = await prisma.business.findUnique({
+      where: { id: req.user.businessId },
+      select: { ownerEmail: true }
+    });
+
+    if (!business || business.ownerEmail !== 'nishkal2005@gmail.com') {
+      return next(ApiError.forbidden('Forbidden: Admin access required'));
+    }
+
+    req.user.email = business.ownerEmail;
+    next();
+  } catch (err) {
+    next(err);
   }
-  next();
 }
 
 // GET /api/admin/stats — Retrieve overall platform metrics
