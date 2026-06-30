@@ -334,7 +334,9 @@ async function initiateSandboxDemoOutreach(campaignId, businessId) {
       });
 
       if (!response.ok) {
-        throw new Error(`AI service returned ${response.status}: ${await response.text()}`);
+        const errBody = await response.text();
+        const cleanErr = errBody.length > 200 ? errBody.substring(0, 200) + '...' : errBody;
+        throw new Error(`AI service returned ${response.status}: ${cleanErr}`);
       }
 
       const result = await response.json();
