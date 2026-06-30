@@ -21,11 +21,11 @@ async function main() {
 
   const adminPasswordHash = await bcrypt.hash('nishkal@810', 10);
   const adminBusiness = await prisma.business.upsert({
-    where: { ownerEmail: 'nishkal0810@gmail.com' },
+    where: { ownerEmail: 'nishkal2005@gmail.com' },
     update: {},
     create: {
       name: 'Super Admin',
-      ownerEmail: 'nishkal0810@gmail.com',
+      ownerEmail: 'nishkal2005@gmail.com',
       passwordHash: adminPasswordHash,
       plan: 'enterprise',
     },

@@ -30,7 +30,7 @@ async function register({ name, email, password, businessName, phone }) {
       id:             business.id,
       name:           business.name,
       email:          business.ownerEmail,
-      role:           business.ownerEmail === 'nishkal0810@gmail.com' ? 'super_admin' : 'admin',
+      role:           business.ownerEmail === 'nishkal2005@gmail.com' ? 'super_admin' : 'admin',
       avatarInitials: name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase(),
       businessId:     business.id,
       business: {
@@ -60,7 +60,7 @@ async function login({ email, password }) {
       id:             business.id,
       name:           business.name,
       email:          business.ownerEmail,
-      role:           business.ownerEmail === 'nishkal0810@gmail.com' ? 'super_admin' : 'admin',
+      role:           business.ownerEmail === 'nishkal2005@gmail.com' ? 'super_admin' : 'admin',
       avatarInitials: business.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase(),
       businessId:     business.id,
       business: {
@@ -103,7 +103,7 @@ async function getProfile(businessId) {
     id:             business.id,
     name:           business.name,
     email:          business.ownerEmail,
-    role:           business.ownerEmail === 'nishkal0810@gmail.com' ? 'super_admin' : 'admin',
+    role:           business.ownerEmail === 'nishkal2005@gmail.com' ? 'super_admin' : 'admin',
     avatarInitials: business.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase(),
     businessId:     business.id,
     business: {
@@ -147,7 +147,7 @@ async function updateProfile(businessId, updates) {
     id:             updatedBusiness.id,
     name:           updatedBusiness.name,
     email:          updatedBusiness.ownerEmail,
-    role:           updatedBusiness.ownerEmail === 'nishkal0810@gmail.com' ? 'super_admin' : 'admin',
+    role:           updatedBusiness.ownerEmail === 'nishkal2005@gmail.com' ? 'super_admin' : 'admin',
     avatarInitials: updatedBusiness.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase(),
     businessId:     updatedBusiness.id,
     business: {

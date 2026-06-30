@@ -7,7 +7,7 @@ const router = Router();
 
 // Middleware to ensure user is super admin
 function requireSuperAdmin(req, res, next) {
-  if (req.user?.email !== 'nishkal0810@gmail.com') {
+  if (req.user?.email !== 'nishkal2005@gmail.com') {
     return next(ApiError.forbidden('Forbidden: Super Admin access required'));
   }
   next();
@@ -79,7 +79,7 @@ router.delete('/businesses/:id', auth, requireSuperAdmin, async (req, res, next)
     const targetBiz = await prisma.business.findUnique({ where: { id } });
     if (!targetBiz) throw ApiError.notFound('Business not found');
 
-    if (targetBiz.ownerEmail === 'nishkal0810@gmail.com') {
+    if (targetBiz.ownerEmail === 'nishkal2005@gmail.com') {
       throw ApiError.forbidden('Cannot delete the Super Admin business');
     }
 

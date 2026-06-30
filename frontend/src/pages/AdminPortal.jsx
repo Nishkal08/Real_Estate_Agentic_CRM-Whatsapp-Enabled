@@ -138,7 +138,7 @@ export default function AdminPortal() {
             </thead>
             <tbody>
               {businesses.map((biz) => {
-                const isSelf = biz.email === 'nishkal0810@gmail.com';
+                const isSelf = biz.email === 'nishkal2005@gmail.com';
                 return (
                   <tr key={biz.id} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
                     <td className="py-4">
